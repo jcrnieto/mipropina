@@ -57,7 +57,7 @@ function isMercadoPagoLink(url: string): boolean {
   return /https?:\/\/(www\.)?mercadopago\.com(\.[a-z]{2})?\/.+/i.test(url);
 }
 
-function parseImageDataUrl(dataUrl: string): { bytes: Buffer; contentType: string; extension: string } {
+function parseImageDataUrl(dataUrl: string): { bytes: Uint8Array; contentType: string; extension: string } {
   const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
   if (!match) {
     throw new Error("Formato de imagen no valido");
@@ -65,7 +65,7 @@ function parseImageDataUrl(dataUrl: string): { bytes: Buffer; contentType: strin
 
   const contentType = match[1];
   const base64 = match[2];
-  const bytes = Buffer.from(base64, "base64");
+  const bytes = Uint8Array.from(Buffer.from(base64, "base64"));
 
   if (bytes.length === 0) {
     throw new Error("La imagen esta vacia");
