@@ -82,6 +82,7 @@ async function uploadEmployeeImage(params: {
 }): Promise<string> {
   const { url, serviceRoleKey } = getSupabaseAdminEnv();
   const parsed = parseImageDataUrl(params.imageDataUrl);
+  const fileBlob = new Blob([parsed.bytes], { type: parsed.contentType });
   const fileName = `foto-${crypto.randomUUID()}.${parsed.extension}`;
   const objectPath = `mipropina/${params.brandSlug}/employee/foto/${fileName}`;
 
@@ -95,7 +96,7 @@ async function uploadEmployeeImage(params: {
         "Content-Type": parsed.contentType,
         "x-upsert": "true",
       },
-      body: parsed.bytes,
+      body: fileBlob,
     },
   );
 
