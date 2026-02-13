@@ -1,7 +1,9 @@
+export const runtime = "nodejs";
+
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { createEmployeeByClerkId, listEmployeesByClerkId } from "@/app/lib/supabase/admin";
 
-const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "wappedidos";
+const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "mipropina";
 
 type WaiterPayload = {
   name?: unknown;
@@ -57,27 +59,24 @@ function isMercadoPagoLink(url: string): boolean {
   return /https?:\/\/(www\.)?mercadopago\.com(\.[a-z]{2})?\/.+/i.test(url);
 }
 
-function parseImageDataUrl(dataUrl: string): { bytes: ArrayBuffer; contentType: string; extension: string } {
+function parseImageDataUrl(dataUrl: string): {
+  buffer: Buffer;
+  contentType: string;
+  extension: string;
+} {
   const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
-  if (!match) {
-    throw new Error("Formato de imagen no valido");
-  }
+  if (!match) throw new Error("Formato de imagen no válido");
 
   const contentType = match[1];
   const base64 = match[2];
-  const decoded = Buffer.from(base64, "base64");
-  const bytes = decoded.buffer.slice(
-    decoded.byteOffset,
-    decoded.byteOffset + decoded.byteLength,
-  ) as ArrayBuffer;
 
-  if (bytes.byteLength === 0) {
-    throw new Error("La imagen esta vacia");
-  }
+  const buffer = Buffer.from(base64, "base64");
+  if (buffer.length === 0) throw new Error("La imagen está vacía");
 
-  const rawExt = contentType.split("/")[1] ?? "jpg";
-  const extension = rawExt.replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
-  return { bytes, contentType, extension };
+  const rawExt = contentType.split("/")[1] ?? "png";
+  const extension = rawExt.replace(/[^a-z0-9]/gi, "").toLowerCase() || "png";
+
+  return { buffer, contentType, extension };
 }
 
 async function uploadEmployeeImage(params: {
@@ -86,23 +85,26 @@ async function uploadEmployeeImage(params: {
 }): Promise<string> {
   const { url, serviceRoleKey } = getSupabaseAdminEnv();
   const parsed = parseImageDataUrl(params.imageDataUrl);
-  const fileBlob = new Blob([parsed.bytes], { type: parsed.contentType });
+
   const fileName = `foto-${crypto.randomUUID()}.${parsed.extension}`;
   const objectPath = `mipropina/${params.brandSlug}/employee/foto/${fileName}`;
 
-  const uploadResponse = await fetch(
-    `${url}/storage/v1/object/${STORAGE_BUCKET}/${encodeURIComponent(objectPath).replace(/%2F/g, "/")}`,
-    {
-      method: "POST",
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-        "Content-Type": parsed.contentType,
-        "x-upsert": "true",
-      },
-      body: fileBlob,
+  const uploadUrl =
+    `${url}/storage/v1/object/${STORAGE_BUCKET}/` +
+    encodeURIComponent(objectPath).replace(/%2F/g, "/");
+
+  const uploadResponse = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": parsed.contentType,
+      "x-upsert": "true",
+      // opcional pero útil:
+      "Content-Length": String(parsed.buffer.length),
     },
-  );
+    body: new Uint8Array(parsed.buffer),
+  });
 
   if (!uploadResponse.ok) {
     const errorText = await uploadResponse.text();
@@ -111,6 +113,7 @@ async function uploadEmployeeImage(params: {
 
   return `${url}/storage/v1/object/public/${STORAGE_BUCKET}/${objectPath}`;
 }
+
 
 export async function POST(req: Request) {
   try {
