@@ -4,6 +4,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { buildAdminPath, buildStorePath, slugifyBrand } from "../lib/brand";
 import { upsertAppUser } from "../lib/supabase/admin";
+import { validateOnboardingForm } from "../validations";
 
 export async function submitOnboarding(formData: FormData): Promise<void> {
   const traceId = crypto.randomUUID();
@@ -17,10 +18,20 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
     redirect("/sign-in");
   }
 
-  const fullName = String(formData.get("fullName") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim();
-  const address = String(formData.get("address") ?? "").trim();
-  const brandName = String(formData.get("brandName") ?? "").trim();
+  const validation = validateOnboardingForm({
+    firstName: String(formData.get("firstName") ?? ""),
+    lastName: String(formData.get("lastName") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
+    address: String(formData.get("address") ?? ""),
+    brandName: String(formData.get("brandName") ?? ""),
+  });
+
+  if (!validation.isValid) {
+    return;
+  }
+
+  const { firstName, lastName, phone, address, brandName } = validation.values;
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
   const brandSlug = slugifyBrand(brandName);
   // console.log(`[onboarding-debug][${traceId}][onboarding.submit] form payload`, {
   //   fullName,
@@ -30,7 +41,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
   //   brandSlug,
   // });
 
-  if (!fullName || !phone || !address || !brandName || !brandSlug) {
+  if (!brandSlug) {
     // console.log(`[onboarding-debug][${traceId}][onboarding.submit] validation failed`);
     return;
   }
@@ -51,6 +62,8 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
 
   const publicMetadataPayload = {
     onboardingComplete: true,
+    firstName,
+    lastName,
     fullName,
     phone,
     address,
@@ -74,6 +87,8 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
   await upsertAppUser({
     clerkUserId: userId,
     email: primaryEmail,
+    firstName,
+    lastName,
     fullName,
     phone,
     address,

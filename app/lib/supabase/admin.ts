@@ -87,15 +87,51 @@ function debugLog(input: UpsertAppUserInput, step: string, payload?: unknown) {
   console.log(`[onboarding-debug][${traceId}][${source}] ${step}`, payload);
 }
 
+function resolvePersonalNameParts(input: UpsertAppUserInput): {
+  firstName: string | null;
+  lastName: string | null;
+} {
+  const normalizedFirstName = input.firstName?.trim() || null;
+  const normalizedLastName = input.lastName?.trim() || null;
+
+  if (normalizedFirstName || normalizedLastName) {
+    return {
+      firstName: normalizedFirstName,
+      lastName: normalizedLastName,
+    };
+  }
+
+  const normalizedFullName = input.fullName?.trim() || "";
+  if (!normalizedFullName) {
+    return { firstName: null, lastName: null };
+  }
+
+  const parts = normalizedFullName.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return { firstName: null, lastName: null };
+  }
+
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: null };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
 async function upsertPersonalDataMipropina(
   input: UpsertAppUserInput,
   usersMipropinaId: string,
 ): Promise<void> {
   const encodedAuthId = encodeURIComponent(input.clerkUserId);
+  const { firstName, lastName } = resolvePersonalNameParts(input);
   const payload = {
     user_id: usersMipropinaId,
     auth_user_id: input.clerkUserId,
-    name: input.fullName ?? null,
+    name: firstName,
+    last_name: lastName,
     phone: input.phone ?? null,
     address: input.address ?? null,
     city: null,
@@ -197,9 +233,11 @@ export async function upsertAppUser(input: UpsertAppUserInput): Promise<void> {
     throw new Error("Could not resolve users_mipropina.id for personal data upsert");
   }
 
+  const { firstName, lastName } = resolvePersonalNameParts(input);
   const shouldUpsertPersonalData =
     input.onboardingComplete === true &&
-    Boolean(input.fullName?.trim()) &&
+    Boolean(firstName) &&
+    Boolean(lastName) &&
     Boolean(input.phone?.trim()) &&
     Boolean(input.address?.trim()) &&
     Boolean(input.brandName?.trim());
@@ -207,7 +245,8 @@ export async function upsertAppUser(input: UpsertAppUserInput): Promise<void> {
   debugLog(input, "personal_data_mipropina decision", {
     shouldUpsertPersonalData,
     onboardingComplete: input.onboardingComplete ?? false,
-    hasFullName: Boolean(input.fullName?.trim()),
+    hasFirstName: Boolean(firstName),
+    hasLastName: Boolean(lastName),
     hasPhone: Boolean(input.phone?.trim()),
     hasAddress: Boolean(input.address?.trim()),
     hasBrandName: Boolean(input.brandName?.trim()),
@@ -462,6 +501,35 @@ export async function listEmployeesByBrandSlug(brandSlug: string): Promise<
   return employees;
 }
 
+export async function getPublicStoreInfoByBrandSlug(brandSlug: string): Promise<{
+  brand_name: string | null;
+  phone: string | null;
+  address: string | null;
+  image: string | null;
+} | null> {
+  const publicUrl = `/${brandSlug}`;
+  const encodedPublicUrl = encodeURIComponent(publicUrl);
+
+  const response = await supabaseRestRequest(
+    `/rest/v1/personal_data_mipropina?public_url=eq.${encodedPublicUrl}&select=brand_name,phone,address,image&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  const rows = (await response.json()) as Array<{
+    brand_name: string | null;
+    phone: string | null;
+    address: string | null;
+    image: string | null;
+  }>;
+
+  return rows[0] ?? null;
+}
+
 export async function setPersonalDataImageByClerkId(
   input: SetPersonalDataImageInput,
 ): Promise<void> {
@@ -506,6 +574,7 @@ export async function setPersonalDataImageByClerkId(
     user_id: usersMipropinaId,
     auth_user_id: input.clerkUserId,
     name: null,
+    last_name: null,
     phone: null,
     address: null,
     city: null,

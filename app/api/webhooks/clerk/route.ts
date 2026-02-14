@@ -47,7 +47,12 @@ export async function POST(req: NextRequest) {
     if (event.type === "user.created" || event.type === "user.updated") {
       const user = event.data as ClerkWebhookUser;
       const metadata = (user.public_metadata ?? {}) as Record<string, unknown>;
-      const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ").trim() || null;
+      const metadataFirstName = readString(metadata, "firstName");
+      const metadataLastName = readString(metadata, "lastName");
+      const firstName = metadataFirstName ?? user.first_name ?? null;
+      const lastName = metadataLastName ?? user.last_name ?? null;
+      const rebuiltFullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+      const fullName = readString(metadata, "fullName") ?? (rebuiltFullName || null);
       console.log(`[onboarding-debug][${traceId}][webhook.clerk] user payload`, {
         userId: user.id,
         onboardingComplete: metadata.onboardingComplete === true,
@@ -56,9 +61,9 @@ export async function POST(req: NextRequest) {
       await upsertAppUser({
         clerkUserId: user.id,
         email: getPrimaryEmail(user),
-        firstName: user.first_name,
-        lastName: user.last_name,
-        fullName: readString(metadata, "fullName") ?? fullName,
+        firstName,
+        lastName,
+        fullName,
         imageUrl: user.image_url,
         onboardingComplete: metadata.onboardingComplete === true,
         phone: readString(metadata, "phone"),

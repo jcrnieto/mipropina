@@ -4,6 +4,8 @@ import { upsertAppUser } from "./supabase/admin";
 
 export type OnboardingData = {
   onboardingComplete: boolean;
+  firstName?: string;
+  lastName?: string;
   fullName?: string;
   phone?: string;
   address?: string;
@@ -20,12 +22,26 @@ function readMetadataString(metadata: Record<string, unknown>, key: string): str
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
+function splitFullName(fullName?: string | null): { firstName?: string; lastName?: string } {
+  if (!fullName) return {};
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return {};
+  if (parts.length === 1) return { firstName: parts[0] };
+  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+}
+
 export function getOnboardingDataFromUser(user: ClerkUser): OnboardingData {
   const metadata = user.publicMetadata as Record<string, unknown>;
+  const metadataFirstName = readMetadataString(metadata, "firstName");
+  const metadataLastName = readMetadataString(metadata, "lastName");
+  const metadataFullName = readMetadataString(metadata, "fullName");
+  const fallbackFromFullName = splitFullName(metadataFullName);
 
   return {
     onboardingComplete: metadata.onboardingComplete === true,
-    fullName: readMetadataString(metadata, "fullName"),
+    firstName: metadataFirstName ?? fallbackFromFullName.firstName,
+    lastName: metadataLastName ?? fallbackFromFullName.lastName,
+    fullName: metadataFullName,
     phone: readMetadataString(metadata, "phone"),
     address: readMetadataString(metadata, "address"),
     brandName: readMetadataString(metadata, "brandName"),
@@ -58,6 +74,14 @@ export async function requireSignedInUser(): Promise<ClerkUser> {
     null;
 
   const metadata = user.publicMetadata as Record<string, unknown>;
+  const metadataFirstName = readMetadataString(metadata, "firstName") ?? null;
+  const metadataLastName = readMetadataString(metadata, "lastName") ?? null;
+  const metadataFullName = readMetadataString(metadata, "fullName") ?? null;
+  const fallbackFromFullName = splitFullName(metadataFullName);
+  const resolvedFirstName = metadataFirstName ?? fallbackFromFullName.firstName ?? null;
+  const resolvedLastName = metadataLastName ?? fallbackFromFullName.lastName ?? null;
+  const rebuiltFullName = [resolvedFirstName, resolvedLastName].filter(Boolean).join(" ").trim();
+  const resolvedFullName = metadataFullName ?? (rebuiltFullName || null);
   console.log(`[onboarding-debug][${traceId}][auth.requireSignedInUser] clerk user loaded`, {
     userId: user.id,
     primaryEmail,
@@ -69,7 +93,9 @@ export async function requireSignedInUser(): Promise<ClerkUser> {
     clerkUserId: user.id,
     email: primaryEmail,
     onboardingComplete: metadata.onboardingComplete === true,
-    fullName: readMetadataString(metadata, "fullName") ?? null,
+    firstName: resolvedFirstName,
+    lastName: resolvedLastName,
+    fullName: resolvedFullName,
     phone: readMetadataString(metadata, "phone") ?? null,
     address: readMetadataString(metadata, "address") ?? null,
     brandName: readMetadataString(metadata, "brandName") ?? null,
