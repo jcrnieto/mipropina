@@ -49,7 +49,7 @@ const Pricing = () => {
               </div>
               <h3 className="font-display text-2xl font-bold text-foreground">Plan Restaurante</h3>
               <div className="mt-4 mb-6">
-                <span className="font-display text-5xl font-bold text-foreground">$4.999</span>
+                <span className="font-display text-5xl font-bold text-foreground">$15.000</span>
                 <span className="text-muted-foreground ml-2">/mes</span>
               </div>
               <p className="text-sm text-muted-foreground mb-6">

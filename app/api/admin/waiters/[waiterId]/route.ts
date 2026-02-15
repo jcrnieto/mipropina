@@ -60,7 +60,20 @@ function readOptionalString(value: unknown): string | null {
 }
 
 function isMercadoPagoLink(url: string): boolean {
-  return /https?:\/\/(www\.)?mercadopago\.com(\.[a-z]{2})?\/.+/i.test(url);
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    const hasPath = parsed.pathname.length > 1;
+    const isMercadoPagoHost =
+      hostname === "mercadopago.com" ||
+      hostname.endsWith(".mercadopago.com") ||
+      hostname === "mercadopago.com.ar" ||
+      hostname.endsWith(".mercadopago.com.ar");
+
+    return (parsed.protocol === "https:" || parsed.protocol === "http:") && isMercadoPagoHost && hasPath;
+  } catch {
+    return false;
+  }
 }
 
 function parseImageDataUrl(dataUrl: string): {

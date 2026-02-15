@@ -23,7 +23,20 @@ const initialForm: WaiterForm = {
 };
 
 function isMercadoPagoLink(url: string) {
-  return /https?:\/\/(www\.)?mercadopago\.com(\.[a-z]{2})?\/.+/i.test(url.trim());
+  try {
+    const parsed = new URL(url.trim());
+    const hostname = parsed.hostname.toLowerCase();
+    const hasPath = parsed.pathname.length > 1;
+    const isMercadoPagoHost =
+      hostname === "mercadopago.com" ||
+      hostname.endsWith(".mercadopago.com") ||
+      hostname === "mercadopago.com.ar" ||
+      hostname.endsWith(".mercadopago.com.ar");
+
+    return (parsed.protocol === "https:" || parsed.protocol === "http:") && isMercadoPagoHost && hasPath;
+  } catch {
+    return false;
+  }
 }
 
 export function WaitersManager({
