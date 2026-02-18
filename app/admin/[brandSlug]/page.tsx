@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { RestaurantPhotoUploader } from "../../components/admin/RestaurantPhotoUploader";
 import { RestaurantQR } from "../../components/admin/RestaurantQR";
 import { PersonalDataEditor } from "../../components/admin/PersonalDataEditor";
+import { RatingConfigEditor } from "../../components/admin/RatingConfigEditor";
 import { WaitersSection } from "../../components/admin/WaitersSection";
 import { requireOnboardedUser } from "../../lib/auth";
 import { buildAdminPath } from "../../lib/brand";
@@ -25,6 +26,10 @@ export default async function AdminBrandPage({ params }: AdminBrandPageProps) {
       <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
         <section id="datos-personales">
           <PersonalDataEditor />
+        </section>
+
+        <section id="calificaciones">
+          <RatingConfigEditor />
         </section>
 
         <section id="foto" className="grid gap-6 lg:grid-cols-2">

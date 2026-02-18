@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { ArrowRight, CreditCard, MapPin, Phone, Search } from "lucide-react";
+import { ArrowRight, CreditCard, MapPin, Phone, Search, Send, Star } from "lucide-react";
 import WaiterModal from "./WaiterModal";
 
 type Waiter = {
@@ -48,12 +48,26 @@ const EMPTY_STORE: StoreInfo = {
   logo: null,
 };
 
+const RATING_LABELS: Record<number, string> = {
+  1: "Malo",
+  2: "Regular",
+  3: "Bueno",
+  4: "Muy bueno",
+  5: "Excelente",
+};
+
 export function WaitersCards({ brandSlug }: WaitersCardsProps) {
   const [waiters, setWaiters] = useState<Waiter[]>([]);
   const [store, setStore] = useState<StoreInfo>(EMPTY_STORE);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [ratingFeatures, setRatingFeatures] = useState<string[]>([]);
+  const [stars, setStars] = useState<number[]>([]);
+  const [comment, setComment] = useState("");
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [ratingError, setRatingError] = useState<string | null>(null);
+  const [ratingSuccess, setRatingSuccess] = useState<string | null>(null);
   const [selectedWaiter, setSelectedWaiter] = useState<Waiter | null>(null);
   const [modalWaiter, setModalWaiter] = useState<Waiter | null>(null);
 
@@ -70,6 +84,7 @@ export function WaitersCards({ brandSlug }: WaitersCardsProps) {
         const json = (await response.json()) as {
           ok: boolean;
           store?: StoreInfo;
+          ratingFeatures?: string[];
           waiters?: Waiter[];
           error?: string;
         };
@@ -80,6 +95,9 @@ export function WaitersCards({ brandSlug }: WaitersCardsProps) {
 
         if (isMounted) {
           setStore(json.store ?? EMPTY_STORE);
+          const loadedFeatures = (json.ratingFeatures ?? []).slice(0, 5);
+          setRatingFeatures(loadedFeatures);
+          setStars(loadedFeatures.map(() => 0));
           setWaiters(json.waiters ?? []);
         }
       } catch (loadError) {
@@ -112,32 +130,164 @@ export function WaitersCards({ brandSlug }: WaitersCardsProps) {
       return fullName.includes(term);
     });
   }, [waiters, search]);
+  const hasRatingConfig = ratingFeatures.length > 0;
+  const canSubmitRating = hasRatingConfig && stars.length === ratingFeatures.length && stars.every((value) => value >= 1 && value <= 5);
+
+  const submitRating = async () => {
+    if (!canSubmitRating) {
+      setRatingError("Completa todas las puntuaciones para enviar.");
+      return;
+    }
+
+    setIsSubmittingRating(true);
+    setRatingError(null);
+    setRatingSuccess(null);
+
+    try {
+      const response = await fetch(`/api/public/${brandSlug}/rating`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          stars,
+          comment,
+        }),
+      });
+
+      const json = (await response.json()) as {
+        ok: boolean;
+        error?: string;
+      };
+
+      if (!response.ok || !json.ok) {
+        throw new Error(json.error || "No se pudo enviar la calificacion.");
+      }
+
+      setStars(ratingFeatures.map(() => 0));
+      setComment("");
+      setRatingSuccess("Gracias por tu calificacion.");
+    } catch (submitError) {
+      setRatingError(submitError instanceof Error ? submitError.message : "No se pudo enviar la calificacion.");
+    } finally {
+      setIsSubmittingRating(false);
+    }
+  };
 
   return (
     <section className="mx-auto w-full max-w-sm rounded-[34px] border border-white/70 bg-[#f4f6fb]/85 p-4 shadow-[0_20px_50px_rgba(17,24,39,0.14)] backdrop-blur md:max-w-5xl md:rounded-3xl md:p-6">
-      <div className="flex h-full flex-col rounded-[26px] bg-[#e7ebf3] p-4 md:grid md:grid-cols-[1fr_1.15fr] md:gap-6 md:p-7">
-        <div className="md:flex md:flex-col md:justify-between">
-          <div>
-            <div className="flex items-center justify-center md:justify-start">
-              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-[#d7dceb] bg-[#f3f5fa] md:h-24 md:w-24">
-                {store.logo ? (
-                  <Image
-                    src={store.logo}
-                    alt={`Logo de ${brandName}`}
-                    width={96}
-                    height={96}
-                    className="h-full w-full object-cover"
-                    unoptimized
-                  />
-                ) : (
-                  <span className="text-sm font-bold text-[#46567a]">{brandName.charAt(0).toUpperCase() || "R"}</span>
-                )}
-              </div>
+      <div className="flex h-full flex-col rounded-[26px] bg-[#e7ebf3] p-4 md:p-7">
+        <div>
+          <div className="flex items-center justify-center">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-[#d7dceb] bg-[#f3f5fa] md:h-24 md:w-24">
+              {store.logo ? (
+                <Image
+                  src={store.logo}
+                  alt={`Logo de ${brandName}`}
+                  width={96}
+                  height={96}
+                  className="h-full w-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <span className="text-sm font-bold text-[#46567a]">{brandName.charAt(0).toUpperCase() || "R"}</span>
+              )}
             </div>
-
           </div>
 
-          <div className="mt-4 rounded-2xl border border-[#cfd7e6] bg-white/80 p-5 md:mt-6">
+          <div className="mt-4 rounded-2xl border border-[#cfd7e6] bg-white/80 p-4">
+            <p className="text-sm font-semibold text-[#5e6f8f]">Datos del restaurante</p>
+            <p className="mt-1 text-base font-semibold text-[#1f2937]">{brandName}</p>
+            <div className="mt-3 grid gap-2 text-sm text-[#475569] sm:grid-cols-2">
+              <p className="flex items-center gap-2 rounded-xl border border-[#dfe4f0] bg-[#f8faff] px-3 py-2">
+                <Phone className="h-4 w-4 text-[#3b82f6]" />
+                {store.phone || "Telefono no disponible"}
+              </p>
+              <p className="flex items-center gap-2 rounded-xl border border-[#dfe4f0] bg-[#f8faff] px-3 py-2">
+                <MapPin className="h-4 w-4 text-[#3b82f6]" />
+                {store.address || "Direccion no disponible"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {hasRatingConfig ? (
+          <div className="mt-4 rounded-2xl border border-[#cfd7e6] bg-white/80 p-4">
+            <p className="text-sm font-semibold text-[#5e6f8f]">Califica tu experiencia</p>
+            <p className="mt-1 text-xs text-[#6b7280]">
+              5 excelente, 4 muy bueno, 3 bueno, 2 regular, 1 malo.
+            </p>
+
+            <div className="mt-3 space-y-3">
+              {ratingFeatures.map((feature, featureIndex) => (
+                <div key={`${feature}-${featureIndex}`} className="rounded-xl border border-[#dfe4f0] bg-[#f8faff] px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-[#1f2937]">{feature}</p>
+                    <span className="text-xs font-semibold text-[#5e6f8f]">
+                      {stars[featureIndex] ? RATING_LABELS[stars[featureIndex]] : "-"}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((value) => {
+                      const active = (stars[featureIndex] ?? 0) >= value;
+                      return (
+                        <button
+                          key={`${featureIndex}-${value}`}
+                          type="button"
+                          onClick={() =>
+                            setStars((previous) =>
+                              previous.map((item, itemIndex) => (itemIndex === featureIndex ? value : item)),
+                            )
+                          }
+                          className="rounded-md p-1 transition-colors hover:bg-[#eef3ff]"
+                          aria-label={`Puntuar ${feature} con ${value} estrellas`}
+                        >
+                          <Star
+                            className={`h-5 w-5 ${active ? "fill-[#f5b94c] text-[#f5b94c]" : "text-[#b9c5dc]"}`}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3">
+              <label className="text-sm font-medium text-[#1f2937]" htmlFor="rating-comment">
+                Comentario (opcional)
+              </label>
+              <textarea
+                id="rating-comment"
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                rows={3}
+                maxLength={300}
+                placeholder="Contanos tu experiencia..."
+                className="mt-1 w-full rounded-xl border border-[#dfe4f0] bg-[#f8faff] px-3 py-2 text-sm text-[#1f2937] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
+              />
+            </div>
+
+            {ratingError ? <p className="mt-2 text-sm text-red-700">{ratingError}</p> : null}
+            {ratingSuccess ? <p className="mt-2 text-sm text-[#0f8a61]">{ratingSuccess}</p> : null}
+
+            <button
+              type="button"
+              onClick={() => {
+                void submitRating();
+              }}
+              disabled={!canSubmitRating || isSubmittingRating}
+              className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#92dce2] bg-[#c4eef0] px-4 py-2 text-sm font-semibold text-[#07a9b2] transition-colors hover:bg-[#b5e6ea] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Send className="h-4 w-4" />
+              {isSubmittingRating ? "Enviando..." : "Enviar calificacion"}
+            </button>
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex flex-1 flex-col">
+          <div className="rounded-2xl border border-[#cfd7e6] bg-white/80 p-5">
             <p className="text-sm text-[#64748b]">Mozo seleccionado</p>
             <p className="mt-1 text-xl font-semibold text-[#1f2937]">
               {selectedWaiter ? `${selectedWaiter.firstName} ${selectedWaiter.lastName}` : "-"}
@@ -146,9 +296,8 @@ export function WaitersCards({ brandSlug }: WaitersCardsProps) {
               Elegi un mozo de la lista y confirma desde el boton de pago.
             </p>
           </div>
-        </div>
 
-        <div className="mt-4 flex flex-1 flex-col md:mt-0">
+          <div className="mt-3 space-y-3">
           <div className="space-y-3">
             {isLoading ? <p className="text-center text-sm text-[#6b7280]">Cargando mozos...</p> : null}
             {error ? <p className="text-center text-sm text-red-700">{error}</p> : null}
@@ -219,6 +368,7 @@ export function WaitersCards({ brandSlug }: WaitersCardsProps) {
                 })
               : null}
           </div>
+          </div>
 
           <button
             type="button"
@@ -232,21 +382,6 @@ export function WaitersCards({ brandSlug }: WaitersCardsProps) {
             <CreditCard className="h-4 w-4" />
             Transferi por Mercado Pago
           </button>
-        </div>
-
-        <div className="mt-4 rounded-2xl border border-[#cfd7e6] bg-white/80 p-4 md:col-span-2 md:mt-2">
-          <p className="text-sm font-semibold text-[#5e6f8f]">Datos del restaurante</p>
-          <p className="mt-1 text-base font-semibold text-[#1f2937]">{brandName}</p>
-          <div className="mt-3 grid gap-2 text-sm text-[#475569] sm:grid-cols-2">
-            <p className="flex items-center gap-2 rounded-xl border border-[#dfe4f0] bg-[#f8faff] px-3 py-2">
-              <Phone className="h-4 w-4 text-[#3b82f6]" />
-              {store.phone || "Telefono no disponible"}
-            </p>
-            <p className="flex items-center gap-2 rounded-xl border border-[#dfe4f0] bg-[#f8faff] px-3 py-2">
-              <MapPin className="h-4 w-4 text-[#3b82f6]" />
-              {store.address || "Direccion no disponible"}
-            </p>
-          </div>
         </div>
       </div>
 

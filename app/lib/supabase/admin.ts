@@ -284,6 +284,91 @@ async function getUsersMipropinaIdByClerkId(clerkUserId: string): Promise<string
   return rows[0]?.id ?? null;
 }
 
+type RatingConfigRow = {
+  id: string;
+  feature_1: string | null;
+  feature_2: string | null;
+  feature_3: string | null;
+  feature_4: string | null;
+  feature_5: string | null;
+};
+
+export async function getRatingConfigByClerkId(clerkUserId: string): Promise<{
+  features: string[];
+} | null> {
+  const encodedId = encodeURIComponent(clerkUserId);
+  const response = await supabaseRestRequest(
+    `/rest/v1/rating_config_mipropina?auth_user_id=eq.${encodedId}&select=id,feature_1,feature_2,feature_3,feature_4,feature_5&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  const rows = (await response.json()) as RatingConfigRow[];
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
+  const features = [row.feature_1, row.feature_2, row.feature_3, row.feature_4, row.feature_5]
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  return { features };
+}
+
+export async function upsertRatingConfigByClerkId(input: {
+  clerkUserId: string;
+  features: string[];
+}): Promise<{ features: string[] }> {
+  const usersMipropinaId = await getUsersMipropinaIdByClerkId(input.clerkUserId);
+  if (!usersMipropinaId) {
+    throw new Error("No se encontro users_mipropina para guardar la configuracion.");
+  }
+
+  const normalized = input.features.map((feature) => feature.trim());
+  const payload = {
+    user_id: usersMipropinaId,
+    auth_user_id: input.clerkUserId,
+    feature_1: normalized[0] ?? null,
+    feature_2: normalized[1] ?? null,
+    feature_3: normalized[2] ?? null,
+    feature_4: normalized[3] ?? null,
+    feature_5: normalized[4] ?? null,
+  };
+
+  const encodedId = encodeURIComponent(input.clerkUserId);
+  const patchResponse = await supabaseRestRequest(
+    `/rest/v1/rating_config_mipropina?auth_user_id=eq.${encodedId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  const patchedRows = (await patchResponse.json()) as RatingConfigRow[];
+  if (patchedRows.length === 0) {
+    await supabaseRestRequest("/rest/v1/rating_config_mipropina", {
+      method: "POST",
+      headers: {
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify([payload]),
+    });
+  }
+
+  return {
+    features: normalized.filter((feature) => feature.length > 0),
+  };
+}
+
 export async function createEmployeeByClerkId(input: CreateEmployeeInput): Promise<{
   id: string;
   name: string | null;
@@ -457,21 +542,7 @@ export async function listEmployeesByBrandSlug(brandSlug: string): Promise<
     image: string | null;
   }>
 > {
-  const publicUrl = `/${brandSlug}`;
-  const encodedPublicUrl = encodeURIComponent(publicUrl);
-
-  const ownerResponse = await supabaseRestRequest(
-    `/rest/v1/personal_data_mipropina?public_url=eq.${encodedPublicUrl}&select=auth_user_id&limit=1`,
-    {
-      method: "GET",
-      headers: {
-        Prefer: "return=representation",
-      },
-    },
-  );
-
-  const ownerRows = (await ownerResponse.json()) as Array<{ auth_user_id: string | null }>;
-  const ownerAuthUserId = ownerRows[0]?.auth_user_id;
+  const ownerAuthUserId = await getOwnerAuthUserIdByBrandSlug(brandSlug);
 
   if (!ownerAuthUserId) {
     return [];
@@ -501,6 +572,28 @@ export async function listEmployeesByBrandSlug(brandSlug: string): Promise<
   return employees;
 }
 
+async function getOwnerAuthUserIdByBrandSlug(brandSlug: string): Promise<string | null> {
+  const publicUrl = `/${brandSlug}`;
+  const encodedPublicUrl = encodeURIComponent(publicUrl);
+
+  const ownerResponse = await supabaseRestRequest(
+    `/rest/v1/personal_data_mipropina?public_url=eq.${encodedPublicUrl}&select=auth_user_id,user_id&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  const ownerRows = (await ownerResponse.json()) as Array<{
+    auth_user_id: string | null;
+    user_id?: string | null;
+  }>;
+
+  return ownerRows[0]?.auth_user_id ?? null;
+}
+
 export async function getPublicStoreInfoByBrandSlug(brandSlug: string): Promise<{
   brand_name: string | null;
   phone: string | null;
@@ -528,6 +621,90 @@ export async function getPublicStoreInfoByBrandSlug(brandSlug: string): Promise<
   }>;
 
   return rows[0] ?? null;
+}
+
+export async function getRatingFeaturesByBrandSlug(brandSlug: string): Promise<string[]> {
+  const ownerAuthUserId = await getOwnerAuthUserIdByBrandSlug(brandSlug);
+  if (!ownerAuthUserId) {
+    return [];
+  }
+
+  const encodedOwnerAuthUserId = encodeURIComponent(ownerAuthUserId);
+  const response = await supabaseRestRequest(
+    `/rest/v1/rating_config_mipropina?auth_user_id=eq.${encodedOwnerAuthUserId}&select=feature_1,feature_2,feature_3,feature_4,feature_5&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  const rows = (await response.json()) as Array<{
+    feature_1: string | null;
+    feature_2: string | null;
+    feature_3: string | null;
+    feature_4: string | null;
+    feature_5: string | null;
+  }>;
+
+  const row = rows[0];
+  if (!row) {
+    return [];
+  }
+
+  return [row.feature_1, row.feature_2, row.feature_3, row.feature_4, row.feature_5]
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+export async function createRatingSubmissionByBrandSlug(input: {
+  brandSlug: string;
+  stars: Array<number | null>;
+  comment?: string | null;
+}): Promise<void> {
+  const publicUrl = `/${input.brandSlug}`;
+  const encodedPublicUrl = encodeURIComponent(publicUrl);
+
+  const ownerResponse = await supabaseRestRequest(
+    `/rest/v1/personal_data_mipropina?public_url=eq.${encodedPublicUrl}&select=user_id,auth_user_id&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  const ownerRows = (await ownerResponse.json()) as Array<{
+    user_id: string | null;
+    auth_user_id: string | null;
+  }>;
+  const owner = ownerRows[0];
+
+  if (!owner?.user_id || !owner.auth_user_id) {
+    throw new Error("No se encontro el restaurante para guardar la calificacion.");
+  }
+
+  const payload = {
+    user_id: owner.user_id,
+    auth_user_id: owner.auth_user_id,
+    stars_1: input.stars[0] ?? null,
+    stars_2: input.stars[1] ?? null,
+    stars_3: input.stars[2] ?? null,
+    stars_4: input.stars[3] ?? null,
+    stars_5: input.stars[4] ?? null,
+    comment: input.comment?.trim() || null,
+  };
+
+  await supabaseRestRequest("/rest/v1/rating_submission_mipropina", {
+    method: "POST",
+    headers: {
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify([payload]),
+  });
 }
 
 export async function setPersonalDataImageByClerkId(

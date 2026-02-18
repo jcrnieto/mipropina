@@ -1,4 +1,8 @@
-import { getPublicStoreInfoByBrandSlug, listEmployeesByBrandSlug } from "@/app/lib/supabase/admin";
+import {
+  getPublicStoreInfoByBrandSlug,
+  getRatingFeaturesByBrandSlug,
+  listEmployeesByBrandSlug,
+} from "@/app/lib/supabase/admin";
 
 type RouteProps = {
   params: Promise<{ brandSlug: string }>;
@@ -11,9 +15,10 @@ export async function GET(_: Request, { params }: RouteProps) {
       return Response.json({ ok: false, error: "brandSlug is required" }, { status: 400 });
     }
 
-    const [employees, storeInfo] = await Promise.all([
+    const [employees, storeInfo, ratingFeatures] = await Promise.all([
       listEmployeesByBrandSlug(brandSlug),
       getPublicStoreInfoByBrandSlug(brandSlug),
+      getRatingFeaturesByBrandSlug(brandSlug),
     ]);
 
     return Response.json({
@@ -24,6 +29,7 @@ export async function GET(_: Request, { params }: RouteProps) {
         address: storeInfo?.address ?? null,
         logo: storeInfo?.image ?? null,
       },
+      ratingFeatures,
       waiters: employees.map((employee) => ({
         id: employee.id,
         firstName: employee.name ?? "",
