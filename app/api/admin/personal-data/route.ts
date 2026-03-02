@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
-import { upsertAppUser } from "@/app/lib/supabase/admin";
+import { upsertAppUser } from "@/app/lib/server/modules/users/users.service";
 import { validatePersonalDataEditable } from "@/app/validations";
 
 type PersonalDataPayload = {
@@ -140,3 +140,4 @@ export async function PATCH(req: Request) {
     );
   }
 }
+

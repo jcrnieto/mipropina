@@ -1,7 +1,7 @@
 import type { WebhookEvent } from "@clerk/nextjs/server";
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import { NextRequest } from "next/server";
-import { deleteAppUserByClerkId, upsertAppUser } from "@/app/lib/supabase/admin";
+import { deleteAppUserByClerkId, upsertAppUser } from "@/app/lib/server/modules/users/users.service";
 
 type ClerkEmailAddress = {
   id: string;
@@ -94,3 +94,5 @@ export async function POST(req: NextRequest) {
     return Response.json({ ok: false }, { status: 400 });
   }
 }
+
+

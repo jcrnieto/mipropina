@@ -1,6 +1,6 @@
 import { UtensilsCrossed } from "lucide-react";
 
-function NavBarAdmin() {
+function NavbarAdmin() {
   return (
     <header className="w-full border border-[#dfdfdf] bg-[#f7f7f7] px-4 py-3">
       <div className="flex items-center gap-3">
@@ -17,4 +17,5 @@ function NavBarAdmin() {
   );
 }
 
-export { NavBarAdmin };
+export { NavbarAdmin };
+

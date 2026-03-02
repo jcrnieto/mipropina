@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
-import { RestaurantPhotoUploader } from "../../components/admin/RestaurantPhotoUploader";
-import { RestaurantQR } from "../../components/admin/RestaurantQR";
-import { PersonalDataEditor } from "../../components/admin/PersonalDataEditor";
-import { RatingConfigEditor } from "../../components/admin/RatingConfigEditor";
-import { WaitersSection } from "../../components/admin/WaitersSection";
-import { requireOnboardedUser } from "../../lib/auth";
-import { buildAdminPath } from "../../lib/brand";
-import { NavBarAdmin } from "@/app/components/admin/NavBarAdmin";
+import { RestaurantPhotoUploader } from "@/app/components/admin/RestaurantPhotoUploader";
+import { RestaurantQR } from "@/app/components/admin/RestaurantQR";
+import { PersonalDataEditor } from "@/app/components/admin/PersonalDataEditor";
+import { RatingConfigEditor } from "@/app/components/admin/RatingConfigEditor";
+import { WaitersSection } from "@/app/components/admin/WaitersSection";
+import { requireOnboardedUser } from "@/app/lib/auth";
+import { buildAdminPath } from "@/app/lib/brand";
+import { NavbarAdmin } from "@/app/components/admin/NavbarAdmin";
 
 type AdminBrandPageProps = {
   params: Promise<{ brandSlug: string }>;
@@ -21,7 +21,7 @@ export default async function AdminBrandPage({ params }: AdminBrandPageProps) {
 
   return (
     <main className="min-h-screen gradient-hero">
-      <NavBarAdmin />
+      <NavbarAdmin />
 
       <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
         <section id="datos-personales">
@@ -43,3 +43,4 @@ export default async function AdminBrandPage({ params }: AdminBrandPageProps) {
     </main>
   );
 }
+

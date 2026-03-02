@@ -1,8 +1,6 @@
-import {
-  getPublicStoreInfoByBrandSlug,
-  getRatingFeaturesByBrandSlug,
-  listEmployeesByBrandSlug,
-} from "@/app/lib/supabase/admin";
+import { listEmployeesByBrandSlug } from "@/app/lib/server/modules/waiters/waiters.service";
+import { getPublicStoreInfoByBrandSlug } from "@/app/lib/server/modules/personal-data/personal-data.service";
+import { getRatingFeaturesByBrandSlug } from "@/app/lib/server/modules/rating-config/rating-config.service";
 
 type RouteProps = {
   params: Promise<{ brandSlug: string }>;

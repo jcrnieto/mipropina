@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Trash2, UsersRound } from "lucide-react";
 import { Waiter } from "./waiters.types";
 
-type ListOfWhitersProps = {
+type WaitersListProps = {
   waiters: Waiter[];
   isLoading: boolean;
   error: string | null;
@@ -13,14 +13,14 @@ type ListOfWhitersProps = {
   onEdit: (waiter: Waiter) => void;
 };
 
-export function ListOfWhiters({
+export function WaitersList({
   waiters,
   isLoading,
   error,
   deletingId,
   onDelete,
   onEdit,
-}: ListOfWhitersProps) {
+}: WaitersListProps) {
   return (
     <section className="rounded-xl border border-[#ddd6ce] bg-[#fbfbfb] p-6">
       <div className="flex items-start justify-between">
@@ -111,3 +111,4 @@ export function ListOfWhiters({
     </section>
   );
 }
+

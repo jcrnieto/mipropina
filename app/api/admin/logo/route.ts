@@ -1,7 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest } from "next/server";
 import { buildAdminPath, buildStorePath } from "@/app/lib/brand";
-import { setPersonalDataImageByClerkId } from "@/app/lib/supabase/admin";
+import { setPersonalDataImageByClerkId } from "@/app/lib/server/modules/personal-data/personal-data.service";
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "wappedidos";
 
@@ -204,3 +204,4 @@ export async function GET() {
     );
   }
 }
+

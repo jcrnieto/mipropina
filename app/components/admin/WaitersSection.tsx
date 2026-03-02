@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ListOfWhiters } from "./ListOfWhiters";
+import { WaitersList } from "./WaitersList";
 import { WaitersManager } from "./WaitersManager";
 import { Waiter } from "./waiters.types";
 
@@ -93,7 +93,7 @@ export function WaitersSection() {
         onCancelEdit={handleCancelEdit}
       />
       <div className="mt-6">
-        <ListOfWhiters
+        <WaitersList
           waiters={waiters}
           isLoading={isLoading}
           error={error}
@@ -105,3 +105,4 @@ export function WaitersSection() {
     </>
   );
 }
+

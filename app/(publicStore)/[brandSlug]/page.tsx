@@ -1,5 +1,5 @@
-import { WaitersCards } from "../components/publicStore/WaitersCards";
-import { PublicStoreFooter } from "../components/publicStore/PublicStoreFooter";
+import { WaitersCards } from "@/app/components/publicStore/WaitersCards";
+import { PublicStoreFooter } from "@/app/components/publicStore/PublicStoreFooter";
 
 type PublicStorePageProps = {
   params: Promise<{ brandSlug: string }>;
@@ -17,3 +17,4 @@ export default async function PublicStorePage({ params }: PublicStorePageProps) 
     </main>
   );
 }
+

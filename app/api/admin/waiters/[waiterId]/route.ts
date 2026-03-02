@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { deleteEmployeeByClerkId, updateEmployeeByClerkId } from "@/app/lib/supabase/admin";
+import { deleteEmployeeByClerkId, updateEmployeeByClerkId } from "@/app/lib/server/modules/waiters/waiters.service";
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "mipropina";
 
@@ -234,3 +234,5 @@ export async function PATCH(req: Request, { params }: RouteProps) {
     );
   }
 }
+
+

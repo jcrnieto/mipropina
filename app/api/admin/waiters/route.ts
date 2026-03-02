@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { createEmployeeByClerkId, listEmployeesByClerkId } from "@/app/lib/supabase/admin";
+import { createEmployeeByClerkId, listEmployeesByClerkId } from "@/app/lib/server/modules/waiters/waiters.service";
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "mipropina";
 
@@ -230,3 +230,5 @@ export async function GET() {
     );
   }
 }
+
+

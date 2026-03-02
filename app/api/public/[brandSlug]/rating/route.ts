@@ -1,7 +1,7 @@
 import {
   createRatingSubmissionByBrandSlug,
   getRatingFeaturesByBrandSlug,
-} from "@/app/lib/supabase/admin";
+} from "@/app/lib/server/modules/rating-config/rating-config.service";
 
 type RouteProps = {
   params: Promise<{ brandSlug: string }>;
@@ -79,3 +79,5 @@ export async function POST(req: Request, { params }: RouteProps) {
     );
   }
 }
+
+

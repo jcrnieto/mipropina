@@ -1,4 +1,4 @@
-import { requireOnboardedUser } from "../lib/auth";
+import { requireOnboardedUser } from "@/app/lib/auth";
 
 export default async function AdminLayout({
   children,
@@ -9,3 +9,4 @@ export default async function AdminLayout({
 
   return <>{children}</>;
 }
+

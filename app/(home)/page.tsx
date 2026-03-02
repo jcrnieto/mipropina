@@ -1,4 +1,4 @@
-﻿import { Footer, Hero, HowItWorks, Navbar, Pricing, Testimonials } from "./components/home";
+import { Footer, Hero, HowItWorks, Navbar, Pricing, Testimonials } from "@/app/components/home";
 
 export default function HomePage() {
   return (
@@ -14,3 +14,4 @@ export default function HomePage() {
     </>
   );
 }
+

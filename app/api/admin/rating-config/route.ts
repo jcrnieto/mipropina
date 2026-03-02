@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { auth } from "@clerk/nextjs/server";
-import { getRatingConfigByClerkId, upsertRatingConfigByClerkId } from "@/app/lib/supabase/admin";
+import { getRatingConfigByClerkId, upsertRatingConfigByClerkId } from "@/app/lib/server/modules/rating-config/rating-config.service";
 import { validateRatingConfig } from "@/app/validations";
 
 type RatingConfigPayload = {
@@ -68,3 +68,5 @@ export async function PATCH(req: Request) {
     );
   }
 }
+
+

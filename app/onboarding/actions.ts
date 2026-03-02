@@ -3,7 +3,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { buildAdminPath, buildStorePath, slugifyBrand } from "../lib/brand";
-import { upsertAppUser } from "../lib/supabase/admin";
+import { upsertAppUser } from "@/app/lib/server/modules/users/users.service";
 import { validateOnboardingForm } from "../validations";
 
 export async function submitOnboarding(formData: FormData): Promise<void> {
@@ -104,3 +104,6 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
   // console.log(`[onboarding-debug][${traceId}][onboarding.submit] redirecting`, { adminPath });
   redirect(adminPath);
 }
+
+
+

@@ -1,6 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { upsertAppUser } from "./supabase/admin";
+import { upsertAppUser } from "@/app/lib/server/modules/users/users.service";
 
 export type OnboardingData = {
   onboardingComplete: boolean;
@@ -122,3 +122,6 @@ export async function requireOnboardedUser(): Promise<{
 
   return { user, onboarding };
 }
+
+
+
