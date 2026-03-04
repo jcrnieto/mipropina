@@ -38,7 +38,7 @@ const Hero = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4">
-            <Link href="/sign-up?plan=pro">
+            <Link href="/sign-up?plan=trial&trialDays=7">
               <Button
                 size="lg"
                 className="gradient-primary text-primary-foreground shadow-xl shadow-primary/30 hover:shadow-primary/50 transition-all text-base px-8 h-12"

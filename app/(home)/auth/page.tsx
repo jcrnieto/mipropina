@@ -8,7 +8,7 @@ export default async function AuthLegacyPage({ searchParams }: AuthLegacyPagePro
   const { tab } = await searchParams;
 
   if (tab === "register") {
-    redirect("/sign-up?plan=pro");
+    redirect("/sign-up?plan=subscription");
   }
 
   redirect("/sign-in");

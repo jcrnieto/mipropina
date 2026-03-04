@@ -28,7 +28,7 @@ const PHONE_REGEX = /^[0-9+() -]+$/;
 export const ONBOARDING_FIELD_RULES = {
   firstName: { minLength: 2, maxLength: 60 },
   lastName: { minLength: 2, maxLength: 60 },
-  phone: { minLength: 8, maxLength: 24, pattern: "[0-9+()\\s-]+" },
+  phone: { minLength: 8, maxLength: 24, pattern: "[-0-9+() ]+" },
   address: { minLength: 5, maxLength: 120 },
   brandName: { minLength: 2, maxLength: 80 },
 } as const;

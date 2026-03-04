@@ -16,9 +16,8 @@ const Navbar = () => {
   };
 
   const handleRegisterClick = () => {
-    localStorage.setItem("signupIntent", "pro");
     setIsOpen(false);
-    router.push("/sign-up?plan=pro");
+    router.push("/sign-up?plan=subscription");
   };
 
   return (

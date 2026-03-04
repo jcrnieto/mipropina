@@ -157,10 +157,10 @@ export function PersonalDataEditor() {
               id="admin-phone"
               name="phone"
               type="tel"
+              inputMode="tel"
               required
               minLength={ONBOARDING_FIELD_RULES.phone.minLength}
               maxLength={ONBOARDING_FIELD_RULES.phone.maxLength}
-              pattern={ONBOARDING_FIELD_RULES.phone.pattern}
               value={form.phone}
               onChange={(event) => setForm((previous) => ({ ...previous, phone: event.target.value }))}
               className="h-11 w-full rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] px-3.5 text-sm text-[#1d1d1b] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"

@@ -7,13 +7,14 @@ import { WaitersSection } from "@/app/components/admin/WaitersSection";
 import { requireOnboardedUser } from "@/app/lib/auth";
 import { buildAdminPath } from "@/app/lib/brand";
 import { NavbarAdmin } from "@/app/components/admin/NavbarAdmin";
+import { UpgradeToProCard } from "@/app/components/admin/UpgradeToProCard";
 
 type AdminBrandPageProps = {
   params: Promise<{ brandSlug: string }>;
 };
 
 export default async function AdminBrandPage({ params }: AdminBrandPageProps) {
-  const [{ brandSlug }, { onboarding }] = await Promise.all([params, requireOnboardedUser()]);
+  const [{ brandSlug }, { onboarding, billing }] = await Promise.all([params, requireOnboardedUser()]);
 
   if (brandSlug !== onboarding.brandSlug) {
     redirect(buildAdminPath(onboarding.brandSlug!));
@@ -24,6 +25,10 @@ export default async function AdminBrandPage({ params }: AdminBrandPageProps) {
       <NavbarAdmin />
 
       <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+        {billing.status === "trial_active" ? (
+          <UpgradeToProCard trialEndsAt={billing.trialEndsAt} />
+        ) : null}
+
         <section id="datos-personales">
           <PersonalDataEditor />
         </section>

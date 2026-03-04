@@ -1,17 +1,77 @@
 import { redirect } from "next/navigation";
-import { requireSignedInUser, getOnboardingDataFromUser } from "../lib/auth";
+import {
+  getBillingDataFromUser,
+  getOnboardingDataFromUser,
+  requireSignedInUser,
+} from "../lib/auth";
 import { buildAdminPath } from "../lib/brand";
+import { hasActiveAdminAccess } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
 import { submitOnboarding } from "./actions";
 import { ArrowRight, Building2, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
 import { ONBOARDING_FIELD_RULES } from "../validations";
 
-export default async function OnboardingPage() {
-  const user = await requireSignedInUser();
-  const onboarding = getOnboardingDataFromUser(user);
+type OnboardingPageProps = {
+  searchParams: Promise<{
+    plan?: string;
+    trialDays?: string;
+    error?: string;
+    billing?: string;
+  }>;
+};
 
-  if (onboarding.onboardingComplete && onboarding.brandSlug) {
+function resolvePlan(
+  planRaw: string | undefined,
+  fallbackMode: "trial" | "subscription" | null,
+): "trial" | "subscription" {
+  if (planRaw === "subscription") return "subscription";
+  if (planRaw === "trial") return "trial";
+  if (fallbackMode === "subscription") return "subscription";
+  if (fallbackMode === "trial") return "trial";
+  return "subscription";
+}
+
+function resolveTrialDays(daysRaw: string | undefined, fallbackDays: number | null): 7 | 14 {
+  if (daysRaw === "14") return 14;
+  if (daysRaw === "7") return 7;
+  return fallbackDays === 14 ? 14 : 7;
+}
+
+function resolveErrorMessage(errorRaw: string | undefined): string | null {
+  if (!errorRaw) return null;
+
+  switch (errorRaw) {
+    case "validation":
+      return "Revisa los datos del formulario para continuar.";
+    case "brand-slug":
+      return "No pudimos generar la ruta de tu marca. Proba con otro nombre.";
+    case "missing-email":
+      return "No encontramos un email principal en tu cuenta para iniciar la suscripcion.";
+    case "mercadopago":
+      return "No pudimos iniciar Mercado Pago. Verifica credenciales y vuelve a intentar.";
+    default:
+      return "Ocurrio un problema al procesar tu solicitud.";
+  }
+}
+
+export default async function OnboardingPage({ searchParams }: OnboardingPageProps) {
+  const [user, query] = await Promise.all([requireSignedInUser(), searchParams]);
+  const onboarding = getOnboardingDataFromUser(user);
+  const billing = getBillingDataFromUser(user);
+  const selectedPlan = resolvePlan(query.plan, billing.mode);
+  const forceSubscriptionFlow = query.plan === "subscription";
+  const trialDays = resolveTrialDays(query.trialDays, billing.trialDays);
+  const errorMessage = resolveErrorMessage(query.error);
+
+  if (
+    onboarding.onboardingComplete &&
+    onboarding.brandSlug &&
+    hasActiveAdminAccess(billing) &&
+    !forceSubscriptionFlow
+  ) {
     redirect(buildAdminPath(onboarding.brandSlug));
   }
+
+  const showBillingRequired = query.billing === "required";
 
   return (
     <main className="relative min-h-screen gradient-hero overflow-hidden px-4 py-8 md:py-12">
@@ -30,8 +90,8 @@ export default async function OnboardingPage() {
               Completa tus datos personales
             </h1>
             <p className="mt-4 text-base leading-relaxed text-[#4a5c7b] md:text-lg">
-              Con esta informacion armamos la pagina publica de tu restaurante y te redirigimos al admin
-              para que cargues logo, QR y mozos.
+              Cargamos los datos de tu restaurante y luego elegis si queres activar prueba gratis o ir a
+              suscripcion en Mercado Pago.
             </p>
 
             <div className="mt-7 space-y-3">
@@ -48,7 +108,7 @@ export default async function OnboardingPage() {
               <div className="flex items-start gap-3 rounded-xl border border-[#d4dbee] bg-white/85 p-3">
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#2d62e0]" />
                 <p className="text-sm text-[#334767]">
-                  Despues de guardar, pasas directo al panel para configurar todo.
+                  Si elegis suscripcion, te redirigimos a Mercado Pago para activar el acceso al admin.
                 </p>
               </div>
             </div>
@@ -58,7 +118,22 @@ export default async function OnboardingPage() {
             <h2 className="font-display text-2xl font-bold text-[#0f1b35] md:text-3xl">Datos del titular</h2>
             <p className="mt-2 text-sm text-[#607193]">Te lleva menos de un minuto.</p>
 
+            {showBillingRequired ? (
+              <div className="mt-4 rounded-xl border border-[#f5d8ad] bg-[#fff4e4] px-4 py-3 text-sm text-[#8d5b16]">
+                Tu acceso al admin necesita una suscripcion activa o una prueba vigente.
+              </div>
+            ) : null}
+
+            {errorMessage ? (
+              <div className="mt-4 rounded-xl border border-[#f6c7c7] bg-[#fff0f0] px-4 py-3 text-sm text-[#962e2e]">
+                {errorMessage}
+              </div>
+            ) : null}
+
             <form action={submitOnboarding} className="mt-6 space-y-4">
+              <input type="hidden" name="billingMode" value={selectedPlan} />
+              <input type="hidden" name="trialDays" value={String(trialDays)} />
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label htmlFor="firstName" className="text-sm font-medium text-[#233556]">
@@ -101,11 +176,10 @@ export default async function OnboardingPage() {
                   id="phone"
                   name="phone"
                   type="tel"
+                  inputMode="tel"
                   required
                   minLength={ONBOARDING_FIELD_RULES.phone.minLength}
                   maxLength={ONBOARDING_FIELD_RULES.phone.maxLength}
-                  pattern={ONBOARDING_FIELD_RULES.phone.pattern}
-                  title="Usa solo numeros, espacios o simbolos + ( ) -"
                   defaultValue={onboarding.phone ?? ""}
                   className="h-11 w-full rounded-xl border border-[#ccd6ea] bg-[#f7faff] px-3.5 text-sm text-[#0f1b35] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
                 />
@@ -147,11 +221,23 @@ export default async function OnboardingPage() {
                 </p>
               </div>
 
+              <div className="rounded-xl border border-[#dce5f6] bg-[#f6f9ff] p-4 text-sm text-[#334767]">
+                {selectedPlan === "subscription" ? (
+                  <p>
+                    Al continuar te redirigimos a Mercado Pago para activar tu suscripcion mensual.
+                  </p>
+                ) : (
+                  <p>
+                    Al continuar activamos tu prueba gratis por {trialDays} dias y entras directo al admin.
+                  </p>
+                )}
+              </div>
+
               <button
                 type="submit"
                 className="group mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl gradient-primary px-4 text-sm font-semibold text-primary-foreground shadow-xl shadow-primary/25 transition-all hover:shadow-primary/40"
               >
-                Continuar al admin
+                {selectedPlan === "subscription" ? "Continuar a Mercado Pago" : `Activar prueba ${trialDays} dias`}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
             </form>
