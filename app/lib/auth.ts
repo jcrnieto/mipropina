@@ -6,7 +6,10 @@ import { upsertAppUser } from "@/app/lib/server/modules/users/users.service";
 import {
   type BillingStatus,
   type BillingSnapshot,
+  getMercadoPagoPreapprovalById,
   hasActiveAdminAccess,
+  readClerkUserIdFromExternalReference,
+  resolveBillingStatusFromPreapprovalStatus,
 } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
 
 export type OnboardingData = {
@@ -185,6 +188,48 @@ export async function requireOnboardedUser(): Promise<{
   }
 
   let billing = getBillingDataFromUser(user);
+  if (
+    billing.mode === "subscription" &&
+    billing.status === "subscription_pending" &&
+    billing.mercadopagoPreapprovalId
+  ) {
+    try {
+      const preapproval = await getMercadoPagoPreapprovalById(billing.mercadopagoPreapprovalId);
+      const externalClerkUserId = readClerkUserIdFromExternalReference(preapproval.externalReference);
+
+      if (externalClerkUserId === user.id) {
+        const nextStatus = resolveBillingStatusFromPreapprovalStatus(preapproval.status);
+        const hasStatusChange =
+          nextStatus !== billing.status || billing.mercadopagoPreapprovalStatus !== preapproval.status;
+
+        if (hasStatusChange) {
+          const client = await clerkClient();
+          await client.users.updateUserMetadata(user.id, {
+            publicMetadata: {
+              billingMode: "subscription",
+              billingStatus: nextStatus,
+              mercadopagoPreapprovalId: preapproval.id,
+              mercadopagoPreapprovalStatus: preapproval.status,
+            },
+          });
+
+          billing = {
+            ...billing,
+            status: nextStatus,
+            mercadopagoPreapprovalId: preapproval.id,
+            mercadopagoPreapprovalStatus: preapproval.status,
+          };
+        }
+      }
+    } catch (error) {
+      console.error("[billing-sync] failed to refresh Mercado Pago preapproval", {
+        clerkUserId: user.id,
+        preapprovalId: billing.mercadopagoPreapprovalId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   if (billing.status === "trial_expired") {
     const client = await clerkClient();
     await client.users.updateUserMetadata(user.id, {

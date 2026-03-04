@@ -25,6 +25,7 @@ type StoreInfo = {
 
 type WaitersCardsProps = {
   brandSlug: string;
+  mode?: "all" | "tip" | "review";
 };
 
 function getInitials(waiter: Waiter): string {
@@ -56,7 +57,7 @@ const RATING_LABELS: Record<number, string> = {
   5: "Excelente",
 };
 
-export function WaitersCards({ brandSlug }: WaitersCardsProps) {
+export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
   const [waiters, setWaiters] = useState<Waiter[]>([]);
   const [store, setStore] = useState<StoreInfo>(EMPTY_STORE);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,6 +132,8 @@ export function WaitersCards({ brandSlug }: WaitersCardsProps) {
     });
   }, [waiters, search]);
   const hasRatingConfig = ratingFeatures.length > 0;
+  const showRatingSection = mode !== "tip";
+  const showTipSection = mode !== "review";
   const canSubmitRating = hasRatingConfig && stars.length === ratingFeatures.length && stars.every((value) => value >= 1 && value <= 5);
 
   const submitRating = async () => {
@@ -211,7 +214,7 @@ export function WaitersCards({ brandSlug }: WaitersCardsProps) {
           </div>
         </div>
 
-        {hasRatingConfig ? (
+        {showRatingSection && hasRatingConfig ? (
           <div className="mt-4 rounded-2xl border border-[#cfd7e6] bg-white/80 p-4">
             <p className="text-sm font-semibold text-[#5e6f8f]">Califica tu experiencia</p>
             <p className="mt-1 text-xs text-[#6b7280]">
@@ -286,6 +289,7 @@ export function WaitersCards({ brandSlug }: WaitersCardsProps) {
           </div>
         ) : null}
 
+        {showTipSection ? (
         <div className="mt-4 flex flex-1 flex-col">
           <div className="rounded-2xl border border-[#cfd7e6] bg-white/80 p-5">
             <p className="text-sm text-[#64748b]">Mozo seleccionado</p>
@@ -383,6 +387,7 @@ export function WaitersCards({ brandSlug }: WaitersCardsProps) {
             Transferi por Mercado Pago
           </button>
         </div>
+        ) : null}
       </div>
 
       <WaiterModal waiter={modalWaiter} onClose={() => setModalWaiter(null)} />

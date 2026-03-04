@@ -91,8 +91,7 @@ export async function createMercadoPagoSubscriptionCheckout(input: {
   status: string;
 }> {
   const appUrl = getAppUrl();
-  const normalizedBrandSlug = input.brandSlug?.trim();
-  const backUrl = normalizedBrandSlug ? `${appUrl}/admin/${normalizedBrandSlug}` : `${appUrl}/admin`;
+  const backUrl = `${appUrl}/onboarding/billing/return`;
   const payerEmail = resolveMercadoPagoPayerEmail(input.payerEmail);
   const response = await mercadoPagoRequest<MercadoPagoPreapprovalResponse>("/preapproval", {
     method: "POST",
