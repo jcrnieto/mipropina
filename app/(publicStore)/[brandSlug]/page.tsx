@@ -3,6 +3,7 @@ import Image from "next/image";
 import { BookOpenText, Star, Wallet } from "lucide-react";
 import { PublicStoreFooter } from "@/app/components/publicStore/PublicStoreFooter";
 import { getPublicStoreInfoByBrandSlug } from "@/app/lib/server/modules/personal-data/personal-data.service";
+import { getActiveMenuByBrandSlug } from "@/app/lib/server/modules/menu/menu.service";
 
 type PublicStorePageProps = {
   params: Promise<{ brandSlug: string }>;
@@ -18,7 +19,10 @@ function formatBrandName(brandSlug: string): string {
 
 export default async function PublicStorePage({ params }: PublicStorePageProps) {
   const { brandSlug } = await params;
-  const storeInfo = await getPublicStoreInfoByBrandSlug(brandSlug);
+  const [storeInfo, menu] = await Promise.all([
+    getPublicStoreInfoByBrandSlug(brandSlug),
+    getActiveMenuByBrandSlug(brandSlug),
+  ]);
   const brandName = storeInfo?.brand_name?.trim() || formatBrandName(brandSlug);
   const logo = storeInfo?.image ?? null;
 
@@ -67,13 +71,23 @@ export default async function PublicStorePage({ params }: PublicStorePageProps) 
             <div className="h-px flex-1 bg-white/30" />
           </div>
 
-          <Link
-            href={`/${brandSlug}/menu`}
-            className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/45 bg-transparent px-4 text-base font-semibold text-white transition hover:bg-white/10"
-          >
-            <BookOpenText className="h-4 w-4" />
-            Menu
-          </Link>
+          {menu?.fileUrl ? (
+            <a
+              href={menu.fileUrl}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/45 bg-transparent px-4 text-base font-semibold text-white transition hover:bg-white/10"
+            >
+              <BookOpenText className="h-4 w-4" />
+              Menu
+            </a>
+          ) : (
+            <Link
+              href={`/${brandSlug}/menu`}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/45 bg-transparent px-4 text-base font-semibold text-white transition hover:bg-white/10"
+            >
+              <BookOpenText className="h-4 w-4" />
+              Menu
+            </Link>
+          )}
         </div>
 
         <PublicStoreFooter />
