@@ -100,25 +100,25 @@ export function RestaurantMenuUploader() {
   };
 
   return (
-    <section className="rounded-xl border border-[#ddd6ce] bg-[#fbfbfb] p-6">
-      <h2 className="mb-4 font-serif text-4xl font-bold leading-none text-[#1d1d1b]">Carta Digital</h2>
+    <section className="rounded-2xl border border-[#d8e0ef] bg-white p-6 shadow-[0_10px_25px_rgba(30,48,90,0.08)]">
+      <h2 className="mb-1 font-display text-2xl font-bold text-[#122443]">Carta Digital</h2>
 
-      <p className="text-sm text-[#7a7065]">
+      <p className="text-sm text-[#607193]">
         Subi un archivo PDF, JPG o PNG (maximo 10 MB). Se mostrara en la seccion Menu del store publico.
       </p>
 
-      <div className="mt-4 rounded-xl border border-[#ddd6ce] bg-white p-4">
+      <div className="mt-4 rounded-xl border border-[#d8e0ef] bg-[#f9fbff] p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-lg border border-[#d9d2ca] bg-[#f6f4f1] p-2">
-              <FileText className="h-4 w-4 text-[#4d4d4d]" />
+            <div className="mt-0.5 rounded-lg border border-[#d6dfef] bg-[#f1f6ff] p-2">
+              <FileText className="h-4 w-4 text-[#2f66dc]" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-[#1d1d1b]">
+              <p className="text-sm font-semibold text-[#1b2c4e]">
                 {menu ? "Carta cargada" : isLoadingCurrent ? "Cargando..." : "No hay carta cargada"}
               </p>
-              <p className="mt-1 text-xs text-[#7a7065]">
-                {menu ? `${menu.mimeType} • ${formatBytes(menu.fileSizeBytes)}` : "Todavia no subiste un archivo."}
+              <p className="mt-1 text-xs text-[#607193]">
+                {menu ? `${menu.mimeType} - ${formatBytes(menu.fileSizeBytes)}` : "Todavia no subiste un archivo."}
               </p>
             </div>
           </div>
@@ -128,7 +128,7 @@ export function RestaurantMenuUploader() {
               href={menu.fileUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-lg border border-[#d9d2ca] bg-[#f6f4f1] px-3 py-1.5 text-xs font-medium text-[#1d1d1b] transition-colors hover:bg-[#efece8]"
+              className="inline-flex items-center gap-1 rounded-lg border border-[#d6dfef] bg-white px-3 py-1.5 text-xs font-medium text-[#1b2c4e] transition-colors hover:bg-[#eef3ff]"
             >
               Ver
               <ExternalLink className="h-3.5 w-3.5" />
@@ -143,7 +143,7 @@ export function RestaurantMenuUploader() {
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={isUploading || isLoadingCurrent}
-        className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] px-4 py-2 text-sm font-medium text-[#1d1d1b] transition-colors hover:bg-[#efece8] disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#2f66dc] bg-[#2f66dc] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2457c4] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <Upload className="h-4 w-4" />
         {isUploading ? "Subiendo..." : menu ? "Cambiar carta" : "Subir carta"}

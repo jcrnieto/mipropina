@@ -1,0 +1,26 @@
+import { auth } from "@clerk/nextjs/server";
+import { getAnalyticsSummaryByClerkId } from "@/app/lib/server/modules/analytics/analytics.service";
+import { resolveAnalyticsDateRange } from "@/app/api/admin/analytics/utils";
+
+export async function GET(req: Request) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const range = resolveAnalyticsDateRange(searchParams);
+    const summary = await getAnalyticsSummaryByClerkId({
+      clerkUserId: userId,
+      range,
+    });
+
+    return Response.json({ ok: true, summary, range });
+  } catch (error) {
+    return Response.json(
+      { ok: false, error: error instanceof Error ? error.message : "No se pudo cargar el resumen." },
+      { status: 500 },
+    );
+  }
+}

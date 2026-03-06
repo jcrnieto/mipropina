@@ -100,20 +100,20 @@ export function RatingConfigEditor() {
   };
 
   return (
-    <section className="rounded-xl border border-[#ddd6ce] bg-[#fbfbfb] p-6">
-      <h2 className="mb-1 font-serif text-4xl font-bold leading-none text-[#1d1d1b]">Calificaciones</h2>
-      <p className="mb-5 text-sm text-[#7a7065]">
+    <section className="rounded-2xl border border-[#d8e0ef] bg-white p-6 shadow-[0_10px_25px_rgba(30,48,90,0.08)]">
+      <h2 className="mb-1 font-display text-2xl font-bold text-[#122443]">Calificaciones</h2>
+      <p className="mb-5 text-sm text-[#607193]">
         Carga hasta {RATING_MAX_FEATURES} caracteristicas para que tus clientes puntuen con estrellas (1 a 5).
       </p>
 
-      {isLoading ? <p className="text-sm text-[#7a7065]">Cargando configuracion...</p> : null}
+      {isLoading ? <p className="text-sm text-[#607193]">Cargando configuracion...</p> : null}
 
       {!isLoading ? (
         <div className="space-y-4">
           <div className="space-y-3">
             {features.map((feature, index) => (
               <div key={`feature-${index}`} className="flex items-center gap-2">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#e3ddd6] bg-[#f6f4f1] text-[#c68d4b]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#d6dfef] bg-[#f8fbff] text-[#2f66dc]">
                   <Star className="h-4 w-4" />
                 </div>
 
@@ -126,14 +126,14 @@ export function RatingConfigEditor() {
                     )
                   }
                   placeholder={`Caracteristica ${index + 1} (ej: Atencion del mozo)`}
-                  className="h-10 w-full rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] px-3.5 text-sm text-[#1d1d1b] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
+                  className="h-10 w-full rounded-xl border border-[#d6dfef] bg-[#f8fbff] px-3.5 text-sm text-[#1b2c4e] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
                 />
 
                 <button
                   type="button"
                   onClick={() => handleRemoveRow(index)}
                   disabled={features.length === 1}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] text-[#7a7065] transition-colors hover:bg-[#efece8] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#d6dfef] bg-[#f8fbff] text-[#607193] transition-colors hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="Eliminar caracteristica"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -147,12 +147,12 @@ export function RatingConfigEditor() {
               type="button"
               onClick={handleAddRow}
               disabled={!canAddRow}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] px-4 py-2 text-sm font-medium text-[#1d1d1b] transition-colors hover:bg-[#efece8] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#d6dfef] bg-[#f8fbff] px-4 py-2 text-sm font-medium text-[#1b2c4e] transition-colors hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="h-4 w-4" />
               Agregar caracteristica
             </button>
-            <p className="text-sm text-[#7a7065]">
+            <p className="text-sm text-[#607193]">
               {nonEmptyCount}/{RATING_MAX_FEATURES} configuradas
             </p>
           </div>
@@ -166,7 +166,7 @@ export function RatingConfigEditor() {
               void handleSave();
             }}
             disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] px-4 py-2 text-sm font-medium text-[#1d1d1b] transition-colors hover:bg-[#efece8] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#2f66dc] bg-[#2f66dc] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2457c4] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Save className="h-4 w-4" />
             {isSaving ? "Guardando..." : "Guardar configuracion"}

@@ -22,11 +22,11 @@ export function WaitersList({
   onEdit,
 }: WaitersListProps) {
   return (
-    <section className="rounded-xl border border-[#ddd6ce] bg-[#fbfbfb] p-6">
+    <section className="rounded-2xl border border-[#d8e0ef] bg-white p-6 shadow-[0_10px_25px_rgba(30,48,90,0.08)]">
       <div className="flex items-start justify-between">
-        <h2 className="font-serif text-4xl font-bold leading-none text-[#1d1d1b]">Equipo de Mozos</h2>
+        <h2 className="font-display text-2xl font-bold text-[#122443]">Equipo de Mozos</h2>
 
-        <span className="inline-flex items-center gap-1 rounded-full bg-[#f7efe4] px-3 py-1 text-sm font-medium text-[#d48321]">
+        <span className="inline-flex items-center gap-1 rounded-full border border-[#d6dfef] bg-[#f8fbff] px-3 py-1 text-sm font-medium text-[#2f66dc]">
           <UsersRound className="h-3.5 w-3.5" />
           {waiters.length}
         </span>
@@ -36,24 +36,24 @@ export function WaitersList({
 
       {isLoading ? (
         <div className="flex min-h-[180px] items-center justify-center">
-          <p className="text-sm text-[#7a7065]">Cargando mozos...</p>
+          <p className="text-sm text-[#607193]">Cargando mozos...</p>
         </div>
       ) : waiters.length === 0 ? (
         <div className="flex min-h-[260px] flex-col items-center justify-center text-center">
-          <div className="mb-5 flex h-18 w-18 items-center justify-center rounded-full bg-[#ebe8e3]">
-            <UsersRound className="h-8 w-8 text-[#bbb4ab]" />
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#f0f5ff]">
+            <UsersRound className="h-8 w-8 text-[#8ca2ce]" />
           </div>
 
-          <p className="text-[31px] leading-tight text-[#7a7065]">Todavia no hay mozos cargados</p>
-          <p className="mt-1 text-sm text-[#aaa194]">Usa el formulario de arriba para agregar tu primer mozo</p>
+          <p className="text-2xl font-semibold leading-tight text-[#495b7f]">Todavia no hay mozos cargados</p>
+          <p className="mt-1 text-sm text-[#8796b4]">Usa el formulario de arriba para agregar tu primer mozo.</p>
         </div>
       ) : (
         <div className="mt-6 space-y-3">
           {waiters.map((waiter) => (
-            <article key={waiter.id} className="rounded-xl border border-[#ddd6ce] bg-white p-4">
+            <article key={waiter.id} className="rounded-xl border border-[#d8e0ef] bg-[#f9fbff] p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                  <div className="relative h-12 w-12 overflow-hidden rounded-full bg-[#f3f1ee]">
+                  <div className="relative h-12 w-12 overflow-hidden rounded-full bg-[#edf2fd]">
                     {waiter.photo ? (
                       <Image
                         src={waiter.photo}
@@ -63,22 +63,22 @@ export function WaitersList({
                         unoptimized
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-xs text-[#9a9085]">
+                      <div className="flex h-full w-full items-center justify-center text-xs text-[#7e8fb0]">
                         Sin foto
                       </div>
                     )}
                   </div>
                   <div className="space-y-1">
-                    <p className="font-semibold text-[#1d1d1b]">
+                    <p className="font-semibold text-[#1b2c4e]">
                       {waiter.firstName} {waiter.lastName}
                     </p>
-                    <p className="text-sm text-[#7a7065]">DNI: {waiter.dni}</p>
-                    <p className="text-sm text-[#7a7065]">Telefono: {waiter.phone}</p>
+                    <p className="text-sm text-[#607193]">DNI: {waiter.dni}</p>
+                    <p className="text-sm text-[#607193]">Telefono: {waiter.phone}</p>
                     <a
                       href={waiter.mercadopagoLink}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-sm text-[#b96c19] underline"
+                      className="text-sm text-[#2f66dc] underline"
                     >
                       Abrir link de Mercado Pago
                     </a>
@@ -89,7 +89,7 @@ export function WaitersList({
                     type="button"
                     disabled={deletingId === waiter.id}
                     onClick={() => onDelete(waiter.id)}
-                    className="inline-flex items-center gap-1 rounded-md border border-[#ddd6ce] px-2 py-1 text-xs text-[#7a7065] hover:bg-[#f6f4f1] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md border border-[#d6dfef] bg-white px-2 py-1 text-xs text-[#607193] hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Trash2 className="h-3 w-3" />
                     {deletingId === waiter.id ? "Eliminando..." : "Eliminar"}
@@ -98,7 +98,7 @@ export function WaitersList({
                     type="button"
                     disabled={deletingId === waiter.id}
                     onClick={() => onEdit(waiter)}
-                    className="inline-flex items-center justify-center rounded-md border border-[#ddd6ce] px-2 py-1 text-xs text-[#7a7065] hover:bg-[#f6f4f1] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-md border border-[#d6dfef] bg-white px-2 py-1 text-xs text-[#607193] hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Editar
                   </button>

@@ -40,13 +40,13 @@ export function UpgradeToProCard({ trialEndsAt }: UpgradeToProCardProps) {
   };
 
   return (
-    <section className="rounded-xl border border-[#f5d8ad] bg-[#fff4e4] px-4 py-4 text-[#8d5b16]">
+    <section className="rounded-2xl border border-[#f3d7a5] bg-[#fff6e8] px-5 py-5 text-[#8d5b16] shadow-[0_10px_25px_rgba(188,127,34,0.12)]">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm">
+          <p className="text-sm font-semibold">
             Prueba activa{trialEndLabel ? ` hasta el ${trialEndLabel}` : ""}.
           </p>
-          <p className="mt-1 text-xs text-[#98621a]">
+          <p className="mt-1 text-xs text-[#9a641c]">
             Pasate a Pro para mantener acceso continuo al panel.
           </p>
         </div>
@@ -55,7 +55,7 @@ export function UpgradeToProCard({ trialEndsAt }: UpgradeToProCardProps) {
           type="button"
           onClick={handleUpgrade}
           disabled={isLoading}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#d48321] px-4 text-sm font-semibold text-white transition hover:bg-[#bb741f] disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#d48321] px-4 text-sm font-semibold text-white transition hover:bg-[#bb741f] disabled:cursor-not-allowed disabled:opacity-70"
         >
           <Crown className="h-4 w-4" />
           {isLoading ? "Redirigiendo..." : "Pasar a Pro"}

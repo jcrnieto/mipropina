@@ -104,19 +104,19 @@ export function PersonalDataEditor() {
   };
 
   return (
-    <section className="rounded-xl border border-[#ddd6ce] bg-[#fbfbfb] p-6">
-      <h2 className="mb-1 font-serif text-4xl font-bold leading-none text-[#1d1d1b]">Datos Personales</h2>
-      <p className="mb-5 text-sm text-[#7a7065]">
-        Podes editar nombre, apellido, telefono y direccion. La marca no se puede modificar.
+    <section className="rounded-2xl border border-[#d8e0ef] bg-white p-6 shadow-[0_10px_25px_rgba(30,48,90,0.08)]">
+      <h2 className="mb-1 font-display text-2xl font-bold text-[#122443]">Datos Personales</h2>
+      <p className="mb-5 text-sm text-[#607193]">
+        Puedes editar nombre, apellido, telefono y direccion. La marca no se puede modificar.
       </p>
 
-      {isLoading ? <p className="text-sm text-[#7a7065]">Cargando datos...</p> : null}
+      {isLoading ? <p className="text-sm text-[#607193]">Cargando datos...</p> : null}
 
       {!isLoading ? (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label htmlFor="admin-firstName" className="text-sm font-medium text-[#1d1d1b]">
+              <label htmlFor="admin-firstName" className="text-sm font-medium text-[#22365f]">
                 Nombre
               </label>
               <input
@@ -128,11 +128,11 @@ export function PersonalDataEditor() {
                 maxLength={ONBOARDING_FIELD_RULES.firstName.maxLength}
                 value={form.firstName}
                 onChange={(event) => setForm((previous) => ({ ...previous, firstName: event.target.value }))}
-                className="h-11 w-full rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] px-3.5 text-sm text-[#1d1d1b] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
+                className="h-11 w-full rounded-xl border border-[#d6dfef] bg-[#f8fbff] px-3.5 text-sm text-[#1b2c4e] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="admin-lastName" className="text-sm font-medium text-[#1d1d1b]">
+              <label htmlFor="admin-lastName" className="text-sm font-medium text-[#22365f]">
                 Apellido
               </label>
               <input
@@ -144,13 +144,13 @@ export function PersonalDataEditor() {
                 maxLength={ONBOARDING_FIELD_RULES.lastName.maxLength}
                 value={form.lastName}
                 onChange={(event) => setForm((previous) => ({ ...previous, lastName: event.target.value }))}
-                className="h-11 w-full rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] px-3.5 text-sm text-[#1d1d1b] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
+                className="h-11 w-full rounded-xl border border-[#d6dfef] bg-[#f8fbff] px-3.5 text-sm text-[#1b2c4e] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="admin-phone" className="text-sm font-medium text-[#1d1d1b]">
+            <label htmlFor="admin-phone" className="text-sm font-medium text-[#22365f]">
               Telefono
             </label>
             <input
@@ -163,12 +163,12 @@ export function PersonalDataEditor() {
               maxLength={ONBOARDING_FIELD_RULES.phone.maxLength}
               value={form.phone}
               onChange={(event) => setForm((previous) => ({ ...previous, phone: event.target.value }))}
-              className="h-11 w-full rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] px-3.5 text-sm text-[#1d1d1b] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
+              className="h-11 w-full rounded-xl border border-[#d6dfef] bg-[#f8fbff] px-3.5 text-sm text-[#1b2c4e] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
             />
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="admin-address" className="text-sm font-medium text-[#1d1d1b]">
+            <label htmlFor="admin-address" className="text-sm font-medium text-[#22365f]">
               Direccion
             </label>
             <input
@@ -180,12 +180,12 @@ export function PersonalDataEditor() {
               maxLength={ONBOARDING_FIELD_RULES.address.maxLength}
               value={form.address}
               onChange={(event) => setForm((previous) => ({ ...previous, address: event.target.value }))}
-              className="h-11 w-full rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] px-3.5 text-sm text-[#1d1d1b] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
+              className="h-11 w-full rounded-xl border border-[#d6dfef] bg-[#f8fbff] px-3.5 text-sm text-[#1b2c4e] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
             />
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="admin-brandName" className="text-sm font-medium text-[#1d1d1b]">
+            <label htmlFor="admin-brandName" className="text-sm font-medium text-[#22365f]">
               Marca
             </label>
             <input
@@ -195,7 +195,7 @@ export function PersonalDataEditor() {
               value={form.brandName}
               readOnly
               disabled
-              className="h-11 w-full cursor-not-allowed rounded-xl border border-[#e0dad2] bg-[#efebe6] px-3.5 text-sm text-[#7a7065]"
+              className="h-11 w-full cursor-not-allowed rounded-xl border border-[#dfe5f2] bg-[#eef3fb] px-3.5 text-sm text-[#66789b]"
             />
           </div>
 
@@ -205,7 +205,7 @@ export function PersonalDataEditor() {
           <button
             type="submit"
             disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] px-4 py-2 text-sm font-medium text-[#1d1d1b] transition-colors hover:bg-[#efece8] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#2f66dc] bg-[#2f66dc] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2457c4] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Save className="h-4 w-4" />
             {isSaving ? "Guardando..." : "Guardar cambios"}

@@ -91,13 +91,12 @@ export function RestaurantPhotoUploader() {
   };
 
   return (
-    <section className="rounded-xl border border-[#ddd6ce] bg-[#fbfbfb] p-6">
-      <h2 className="mb-5 font-serif text-4xl font-bold leading-none text-[#1d1d1b]">
-        Logo del Restaurante
-      </h2>
+    <section className="rounded-2xl border border-[#d8e0ef] bg-white p-6 shadow-[0_10px_25px_rgba(30,48,90,0.08)]">
+      <h2 className="mb-1 font-display text-2xl font-bold text-[#122443]">Logo del Restaurante</h2>
+      <p className="mb-5 text-sm text-[#607193]">Este logo se mostrara en la experiencia publica del cliente.</p>
 
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
-        <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#e7cda8] bg-[#f3f1ee] transition-colors hover:border-[#ddbf90]">
+        <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#d6dfef] bg-[#f8fbff] transition-colors hover:border-[#8aa7e8]">
           {logo ? (
             <>
               <Image src={logo} alt="Logo del restaurante" fill className="object-cover" unoptimized />
@@ -110,12 +109,12 @@ export function RestaurantPhotoUploader() {
               </button>
             </>
           ) : (
-            <UtensilsCrossed className="h-10 w-10 text-[#b7afa4]" />
+            <UtensilsCrossed className="h-10 w-10 text-[#8ca2ce]" />
           )}
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm text-[#7a7065]">
+          <p className="text-sm text-[#607193]">
             Subi el logo de tu restaurante. Se mostrara en la tienda publica.
           </p>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -123,7 +122,7 @@ export function RestaurantPhotoUploader() {
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={isUploading || isLoadingCurrent}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#d9d2ca] bg-[#f6f4f1] px-4 py-2 text-sm font-medium text-[#1d1d1b] transition-colors hover:bg-[#efece8]"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#2f66dc] bg-[#2f66dc] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2457c4] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <ImagePlus className="h-4 w-4" />
             {isLoadingCurrent ? "Cargando..." : isUploading ? "Subiendo..." : logo ? "Cambiar logo" : "Subir logo"}
