@@ -23,7 +23,7 @@ export type RestaurantInsertPayload = {
   brand_id?: string | null;
   user_id: string;
   auth_user_id: string;
-  brand_name: string;
+  brand_name: string | null;
   branch_name: string | null;
   slug: string;
   phone: string | null;

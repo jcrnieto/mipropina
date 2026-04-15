@@ -72,10 +72,9 @@ export async function upsertMenuByClerkId(input: {
     file_size_bytes: input.fileSizeBytes ?? null,
     is_active: true,
   };
-  const restaurant = input.brandSlug
-    ? await getOwnerByBrandSlug(input.brandSlug)
-    : await getPrimaryRestaurantByClerkId(input.clerkUserId);
-  const restaurantId = "restaurant_id" in (restaurant ?? {}) ? restaurant?.restaurant_id : restaurant?.id;
+  const restaurantId = input.brandSlug
+    ? (await getOwnerByBrandSlug(input.brandSlug))?.restaurant_id ?? null
+    : (await getPrimaryRestaurantByClerkId(input.clerkUserId))?.id ?? null;
   if (!restaurantId) {
     throw new Error("Cannot upsert menu without restaurant row");
   }

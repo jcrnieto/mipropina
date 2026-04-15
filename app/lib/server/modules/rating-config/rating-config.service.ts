@@ -67,10 +67,9 @@ export async function upsertRatingConfigByClerkId(input: {
   if (!usersMipropinaId) {
     throw new Error("No se encontro users_mipropina para guardar la configuracion.");
   }
-  const restaurant = input.brandSlug
-    ? await getOwnerByBrandSlug(input.brandSlug)
-    : await getPrimaryRestaurantByClerkId(input.clerkUserId);
-  const restaurantId = "restaurant_id" in (restaurant ?? {}) ? restaurant?.restaurant_id : restaurant?.id;
+  const restaurantId = input.brandSlug
+    ? (await getOwnerByBrandSlug(input.brandSlug))?.restaurant_id ?? null
+    : (await getPrimaryRestaurantByClerkId(input.clerkUserId))?.id ?? null;
   if (!restaurantId) {
     throw new Error("No se encontro restaurante para guardar la configuracion.");
   }
