@@ -20,6 +20,7 @@ import { AnalyticsDashboard } from "@/app/components/admin/AnalyticsDashboard";
 import { requireOnboardedUser } from "@/app/lib/auth";
 import { NavbarAdmin } from "@/app/components/admin/NavbarAdmin";
 import { UpgradeToProCard } from "@/app/components/admin/UpgradeToProCard";
+import { InstallAppCard } from "@/app/components/admin/InstallAppCard";
 import { getRestaurantByBrandSlug } from "@/app/lib/server/modules/restaurants/restaurants.service";
 
 type AdminBrandPageProps = {
@@ -78,6 +79,8 @@ export default async function AdminBrandPage({ params }: AdminBrandPageProps) {
         </Link>
 
         {billing.status === "trial_active" ? <UpgradeToProCard trialEndsAt={billing.trialEndsAt} /> : null}
+
+        <InstallAppCard />
 
         <section
           id="resumen"

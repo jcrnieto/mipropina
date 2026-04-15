@@ -1,5 +1,5 @@
-﻿import type { Metadata } from "next";
-import { ClerkProvider } from '@clerk/nextjs'
+import type { Metadata, Viewport } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -20,6 +20,21 @@ export const metadata: Metadata = {
   },
   description:
     "Recibi propinas digitales con QR y Mercado Pago para tus mozos, sin efectivo y sin friccion.",
+  applicationName: "MiPropina",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MiPropina",
+  },
+  icons: {
+    icon: "/icon?size=192",
+    apple: "/apple-icon",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({
