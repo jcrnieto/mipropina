@@ -46,6 +46,10 @@ export function resolveBillingStatusFromPreapprovalStatus(status: string | null 
     return "subscription_active";
   }
 
+  if (normalized === "approved" || normalized === "active") {
+    return "subscription_active";
+  }
+
   if (normalized === "pending") {
     return "subscription_pending";
   }
@@ -79,7 +83,7 @@ export function hasActiveAdminAccess(snapshot: BillingSnapshot, now = new Date()
 }
 
 export async function createMercadoPagoSubscriptionCheckout(input: {
-  clerkUserId: string;
+  brandId: string;
   payerEmail: string;
   reason: string;
   amount: number;
@@ -98,7 +102,7 @@ export async function createMercadoPagoSubscriptionCheckout(input: {
     body: JSON.stringify({
       reason: input.reason,
       payer_email: payerEmail,
-      external_reference: `clerk:${input.clerkUserId}`,
+      external_reference: `brand:${input.brandId}`,
       back_url: backUrl,
       status: "pending",
       auto_recurring: {
@@ -138,15 +142,15 @@ export async function getMercadoPagoPreapprovalById(preapprovalId: string): Prom
   };
 }
 
-export function readClerkUserIdFromExternalReference(externalReference: string | null): string | null {
+export function readBrandIdFromExternalReference(externalReference: string | null): string | null {
   if (!externalReference) {
     return null;
   }
 
-  if (!externalReference.startsWith("clerk:")) {
+  if (!externalReference.startsWith("brand:")) {
     return null;
   }
 
-  const userId = externalReference.slice("clerk:".length).trim();
-  return userId.length > 0 ? userId : null;
+  const brandId = externalReference.slice("brand:".length).trim();
+  return brandId.length > 0 ? brandId : null;
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, ExternalLink, LineChart, Settings2, Star, Store, UserRoundCheck, UtensilsCrossed } from "lucide-react";
+import { BarChart3, ExternalLink, LineChart, Settings2, Star, Store, UserRoundCheck, UtensilsCrossed, Building2 } from "lucide-react";
 
 type NavbarAdminProps = {
   brandSlug: string;
@@ -36,6 +36,13 @@ function NavbarAdmin({ brandSlug, brandName }: NavbarAdminProps) {
 
         <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
           <nav className="flex min-w-max items-center gap-2 text-sm">
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-1 rounded-full border border-[#d6dfef] bg-white px-3 py-1.5 text-[#2a477f] transition hover:bg-[#f7f9ff]"
+            >
+              <Building2 className="h-3.5 w-3.5" />
+              Locales
+            </Link>
             <a
               href="#resumen"
               className="inline-flex items-center gap-1 rounded-full border border-[#d6dfef] bg-white px-3 py-1.5 text-[#2a477f] transition hover:bg-[#f7f9ff]"

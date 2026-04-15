@@ -9,6 +9,7 @@ export type AccountMipropinaStatus =
   | "incomplete";
 
 export type AccountMipropinaPayload = {
+  brand_id?: string | null;
   user_id: string;
   auth_user_id: string;
   status: AccountMipropinaStatus;
@@ -30,13 +31,18 @@ type AccountIdRow = {
   id: string;
 };
 
-export async function patchAccountByClerkId(
-  clerkUserId: string,
+export type AccountRow = AccountIdRow & AccountMipropinaPayload;
+
+const ACCOUNT_SELECT =
+  "id,brand_id,user_id,auth_user_id,status,trial_start,trial_end,mp_preapproval_id,mp_preapproval_status,mp_last_event_id,current_period_start,current_period_end,last_payment_id,last_payment_status,last_payment_at,next_billing_at,canceled_at";
+
+export async function patchAccountByBrandId(
+  brandId: string,
   payload: Partial<AccountMipropinaPayload>,
 ): Promise<AccountIdRow[]> {
-  const encodedId = encodeURIComponent(clerkUserId);
+  const encodedBrandId = encodeURIComponent(brandId);
   const response = await supabaseRestRequest(
-    `/rest/v1/account_mipropina?auth_user_id=eq.${encodedId}`,
+    `/rest/v1/account_mipropina?brand_id=eq.${encodedBrandId}`,
     {
       method: "PATCH",
       headers: {
@@ -47,6 +53,57 @@ export async function patchAccountByClerkId(
   );
 
   return (await response.json()) as AccountIdRow[];
+}
+
+export async function patchAccountByClerkId(
+  clerkUserId: string,
+  payload: Partial<AccountMipropinaPayload>,
+): Promise<AccountIdRow[]> {
+  const encodedClerkUserId = encodeURIComponent(clerkUserId);
+  const response = await supabaseRestRequest(
+    `/rest/v1/account_mipropina?auth_user_id=eq.${encodedClerkUserId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return (await response.json()) as AccountIdRow[];
+}
+
+export async function getAccountByBrandId(brandId: string): Promise<AccountRow | null> {
+  const encodedBrandId = encodeURIComponent(brandId);
+  const response = await supabaseRestRequest(
+    `/rest/v1/account_mipropina?brand_id=eq.${encodedBrandId}&select=${ACCOUNT_SELECT}&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  const rows = (await response.json()) as AccountRow[];
+  return rows[0] ?? null;
+}
+
+export async function getAccountByClerkId(clerkUserId: string): Promise<AccountRow | null> {
+  const encodedClerkUserId = encodeURIComponent(clerkUserId);
+  const response = await supabaseRestRequest(
+    `/rest/v1/account_mipropina?auth_user_id=eq.${encodedClerkUserId}&select=${ACCOUNT_SELECT}&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  const rows = (await response.json()) as AccountRow[];
+  return rows[0] ?? null;
 }
 
 export async function insertAccount(payload: AccountMipropinaPayload): Promise<AccountIdRow[]> {
@@ -60,4 +117,3 @@ export async function insertAccount(payload: AccountMipropinaPayload): Promise<A
 
   return (await response.json()) as AccountIdRow[];
 }
-

@@ -1,8 +1,9 @@
 import { clerkClient } from "@clerk/nextjs/server";
-import { upsertAccountSnapshotByClerkId } from "@/app/lib/server/modules/account/account.service";
+import { upsertAccountSnapshotByBrandId } from "@/app/lib/server/modules/account/account.service";
+import { getBrandByIdOrThrow } from "@/app/lib/server/modules/brands/brands.service";
 import {
   getMercadoPagoPreapprovalById,
-  readClerkUserIdFromExternalReference,
+  readBrandIdFromExternalReference,
   resolveBillingStatusFromPreapprovalStatus,
 } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
 
@@ -36,16 +37,17 @@ export async function POST(req: Request) {
     }
 
     const preapproval = await getMercadoPagoPreapprovalById(preapprovalId);
-    const clerkUserId = readClerkUserIdFromExternalReference(preapproval.externalReference);
+    const brandId = readBrandIdFromExternalReference(preapproval.externalReference);
 
-    if (!clerkUserId) {
-      return Response.json({ ok: true, ignored: "missing-clerk-reference" });
+    if (!brandId) {
+      return Response.json({ ok: true, ignored: "missing-brand-reference" });
     }
 
     const billingStatus = resolveBillingStatusFromPreapprovalStatus(preapproval.status);
+    const brand = await getBrandByIdOrThrow(brandId);
 
     const client = await clerkClient();
-    await client.users.updateUserMetadata(clerkUserId, {
+    await client.users.updateUserMetadata(brand.owner_auth_user_id, {
       publicMetadata: {
         billingMode: "subscription",
         billingStatus,
@@ -54,8 +56,9 @@ export async function POST(req: Request) {
       },
     });
 
-    await upsertAccountSnapshotByClerkId({
-      clerkUserId,
+    await upsertAccountSnapshotByBrandId({
+      brandId,
+      clerkUserId: brand.owner_auth_user_id,
       billingStatus,
       trialStartedAt: null,
       trialEndsAt: null,

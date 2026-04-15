@@ -45,6 +45,10 @@ type ExperienceItem = {
   tableCode: string | null;
   waiterId: string | null;
   waiterName: string | null;
+  waiterServiceScore?: number | null;
+  entryType?: string | null;
+  lowestScore?: number | null;
+  experienceStatus?: "positive" | "neutral" | "negative" | null;
   stars1: number | null;
   stars2: number | null;
   stars3: number | null;
@@ -100,7 +104,23 @@ function buildTrendPolyline(data: TrendPoint[], width = 620, height = 220): stri
     .join(" ");
 }
 
-export function AnalyticsDashboard() {
+function buildTrendPoints(data: TrendPoint[], width = 620, height = 220) {
+  if (data.length === 0) return [];
+  const padding = 18;
+  const values = data.map((item) => item.promedio);
+  const min = Math.min(...values, 0);
+  const max = Math.max(...values, 5);
+  const span = max - min || 1;
+
+  return data.map((item, index) => {
+    const x =
+      padding + (index * (width - padding * 2)) / Math.max(data.length - 1, 1);
+    const y = height - padding - ((item.promedio - min) * (height - padding * 2)) / span;
+    return { x, y, dia: item.dia, promedio: item.promedio };
+  });
+}
+
+export function AnalyticsDashboard({ brandSlug }: { brandSlug: string }) {
   const now = new Date();
   const fromDefault = new Date(now);
   fromDefault.setUTCDate(fromDefault.getUTCDate() - 29);
@@ -123,8 +143,9 @@ export function AnalyticsDashboard() {
     const params = new URLSearchParams();
     params.set("from", fromIso);
     params.set("to", toIso);
+    params.set("brandSlug", brandSlug);
     return params.toString();
-  }, [fromDate, toDate]);
+  }, [brandSlug, fromDate, toDate]);
 
   const load = useCallback(async (refreshOnly = false) => {
     if (refreshOnly) {
@@ -140,7 +161,7 @@ export function AnalyticsDashboard() {
         fetch(`/api/admin/analytics/trend?${query}`, { cache: "no-store" }),
         fetch(`/api/admin/analytics/distribution?${query}`, { cache: "no-store" }),
         fetch(`/api/admin/analytics/features?${query}`, { cache: "no-store" }),
-        fetch(`/api/admin/analytics/waiters?${query}&minSamples=3`, { cache: "no-store" }),
+        fetch(`/api/admin/analytics/waiters?${query}&minSamples=1`, { cache: "no-store" }),
         fetch(`/api/admin/analytics/experiences?${query}&limit=20&offset=0`, { cache: "no-store" }),
       ]);
 
@@ -192,6 +213,7 @@ export function AnalyticsDashboard() {
   }, [load]);
 
   const trendLine = useMemo(() => buildTrendPolyline(trend), [trend]);
+  const trendPoints = useMemo(() => buildTrendPoints(trend), [trend]);
   const maxDistribution = useMemo(
     () => Math.max(...distribution.map((item) => item.total), 1),
     [distribution],
@@ -287,14 +309,19 @@ export function AnalyticsDashboard() {
               ) : (
                 <div className="mt-3 rounded-lg border border-[#e6ecf8] bg-[#f7faff] p-2">
                   <svg viewBox="0 0 620 220" className="h-52 w-full">
-                    <polyline
-                      fill="none"
-                      stroke="#2f66dc"
-                      strokeWidth="3"
-                      points={trendLine}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
+                    {trendLine ? (
+                      <polyline
+                        fill="none"
+                        stroke="#2f66dc"
+                        strokeWidth="3"
+                        points={trendLine}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    ) : null}
+                    {trendPoints.map((point) => (
+                      <circle key={`${point.dia}-${point.promedio}`} cx={point.x} cy={point.y} r="5" fill="#2f66dc" />
+                    ))}
                   </svg>
                   <div className="mt-1 flex items-center justify-between text-xs text-[#607193]">
                     <span>{trend[0]?.dia}</span>
@@ -350,7 +377,7 @@ export function AnalyticsDashboard() {
               <div className="mt-3 space-y-2">
                 {waiters.length === 0 ? (
                   <p className="text-sm text-[#607193]">
-                    Aun no hay datos por mozo (se requiere waiter_id y minimo de muestras).
+                    Aun no hay datos por mozo (se requieren evaluaciones de atencion del mozo y minimo de muestras).
                   </p>
                 ) : (
                   waiters.map((item) => (
@@ -383,6 +410,7 @@ export function AnalyticsDashboard() {
                   <tr className="border-b border-[#e6ecf8] text-left text-xs uppercase tracking-[0.08em] text-[#607193]">
                     <th className="px-2 py-2 font-semibold">Fecha</th>
                     <th className="px-2 py-2 font-semibold">Mozo</th>
+                    <th className="px-2 py-2 font-semibold">Atencion mozo</th>
                     <th className="px-2 py-2 font-semibold">Score</th>
                     <th className="px-2 py-2 font-semibold">Origen</th>
                     <th className="px-2 py-2 font-semibold">Mesa</th>
@@ -391,15 +419,33 @@ export function AnalyticsDashboard() {
                 </thead>
                 <tbody>
                   {(experiences?.items ?? []).map((item) => (
-                    <tr key={item.id} className="border-b border-[#eef3ff]">
+                    <tr
+                      key={item.id}
+                      className={`border-b ${
+                        item.experienceStatus === "negative"
+                          ? "border-[#f7c7c7] bg-[#fff4f4]"
+                          : "border-[#eef3ff]"
+                      }`}
+                    >
                       <td className="px-2 py-2 text-[#1b2c4e]">
                         {new Date(item.createdAt).toLocaleString("es-AR")}
                       </td>
-                      <td className="px-2 py-2 text-[#1b2c4e]">{item.waiterName ?? "-"}</td>
-                      <td className="px-2 py-2 font-semibold text-[#1b2c4e]">{item.overallScore}</td>
+                      <td className={`px-2 py-2 ${item.experienceStatus === "negative" ? "text-[#a43a3a]" : "text-[#1b2c4e]"}`}>
+                        {item.waiterName ?? "-"}
+                      </td>
+                      <td className={`px-2 py-2 font-semibold ${item.waiterServiceScore && item.waiterServiceScore <= 2 ? "text-[#a43a3a]" : "text-[#1b2c4e]"}`}>
+                        {item.waiterServiceScore ?? "-"}
+                      </td>
+                      <td className={`px-2 py-2 font-semibold ${item.experienceStatus === "negative" ? "text-[#a43a3a]" : "text-[#1b2c4e]"}`}>
+                        {item.overallScore}
+                      </td>
                       <td className="px-2 py-2 text-[#607193]">{item.source}</td>
                       <td className="px-2 py-2 text-[#607193]">{item.tableCode ?? "-"}</td>
-                      <td className="max-w-[360px] truncate px-2 py-2 text-[#1b2c4e]">
+                      <td
+                        className={`max-w-[360px] truncate px-2 py-2 ${
+                          item.experienceStatus === "negative" ? "font-medium text-[#8f1d1d]" : "text-[#1b2c4e]"
+                        }`}
+                      >
                         {item.comment ?? "-"}
                       </td>
                     </tr>

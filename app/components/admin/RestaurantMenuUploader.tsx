@@ -18,7 +18,7 @@ function formatBytes(input: number | null): string {
   return `${(input / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function RestaurantMenuUploader() {
+export function RestaurantMenuUploader({ brandSlug }: { brandSlug: string }) {
   const [menu, setMenu] = useState<MenuSnapshot>(null);
   const [isLoadingCurrent, setIsLoadingCurrent] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -30,7 +30,7 @@ export function RestaurantMenuUploader() {
 
     const loadCurrentMenu = async () => {
       try {
-        const response = await fetch("/api/admin/menu", {
+        const response = await fetch(`/api/admin/menu?brandSlug=${encodeURIComponent(brandSlug)}`, {
           method: "GET",
           cache: "no-store",
         });
@@ -62,7 +62,7 @@ export function RestaurantMenuUploader() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [brandSlug]);
 
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -75,7 +75,7 @@ export function RestaurantMenuUploader() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("/api/admin/menu", {
+      const response = await fetch(`/api/admin/menu?brandSlug=${encodeURIComponent(brandSlug)}`, {
         method: "POST",
         body: formData,
       });

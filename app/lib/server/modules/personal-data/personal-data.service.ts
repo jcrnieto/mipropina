@@ -23,6 +23,9 @@ export async function upsertPersonalDataByClerkId(input: {
   lastName: string | null;
   phone: string | null;
   address: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  tiktok: string | null;
   brandName: string | null;
   adminPath: string | null;
   storePath: string | null;
@@ -34,6 +37,9 @@ export async function upsertPersonalDataByClerkId(input: {
     last_name: input.lastName,
     phone: input.phone,
     address: input.address,
+    instagram: input.instagram,
+    facebook: input.facebook,
+    tiktok: input.tiktok,
     city: null,
     brand_name: input.brandName,
     public_url: input.storePath,
@@ -69,6 +75,9 @@ export async function setPersonalDataImageByClerkId(input: SetPersonalDataImageI
     last_name: null,
     phone: null,
     address: null,
+    instagram: null,
+    facebook: null,
+    tiktok: null,
     city: null,
     brand_name: input.brandName ?? null,
     public_url: input.storePath ?? null,
@@ -87,6 +96,9 @@ export async function getPublicStoreInfoByBrandSlug(brandSlug: string): Promise<
   phone: string | null;
   address: string | null;
   image: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  tiktok: string | null;
 } | null> {
   return getPublicStoreInfoRowByBrandSlug(brandSlug);
 }

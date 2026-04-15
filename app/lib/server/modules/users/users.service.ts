@@ -1,4 +1,3 @@
-import { upsertPersonalDataByClerkId } from "@/app/lib/server/modules/personal-data/personal-data.service";
 import {
   deleteUsersMipropinaByClerkId,
   upsertUsersMipropinaByClerkId,
@@ -14,6 +13,9 @@ export type UpsertAppUserInput = {
   onboardingComplete?: boolean;
   phone?: string | null;
   address?: string | null;
+  instagram?: string | null;
+  facebook?: string | null;
+  tiktok?: string | null;
   brandName?: string | null;
   brandSlug?: string | null;
   adminPath?: string | null;
@@ -82,37 +84,13 @@ export async function upsertAppUser(input: UpsertAppUserInput): Promise<void> {
   });
 
   const { firstName, lastName } = resolvePersonalNameParts(input);
-  const shouldUpsertPersonalData =
-    input.onboardingComplete === true &&
-    Boolean(firstName) &&
-    Boolean(lastName) &&
-    Boolean(input.phone?.trim()) &&
-    Boolean(input.address?.trim()) &&
-    Boolean(input.brandName?.trim());
-
-  debugLog(input, "personal_data_mipropina decision", {
-    shouldUpsertPersonalData,
+  debugLog(input, "users_mipropina synced", {
+    usersMipropinaId,
     onboardingComplete: input.onboardingComplete ?? false,
     hasFirstName: Boolean(firstName),
     hasLastName: Boolean(lastName),
-    hasPhone: Boolean(input.phone?.trim()),
-    hasAddress: Boolean(input.address?.trim()),
     hasBrandName: Boolean(input.brandName?.trim()),
   });
-
-  if (shouldUpsertPersonalData) {
-    await upsertPersonalDataByClerkId({
-      usersMipropinaId,
-      clerkUserId: input.clerkUserId,
-      firstName,
-      lastName,
-      phone: input.phone ?? null,
-      address: input.address ?? null,
-      brandName: input.brandName ?? null,
-      adminPath: input.adminPath ?? null,
-      storePath: input.storePath ?? null,
-    });
-  }
 }
 
 export async function deleteAppUserByClerkId(clerkUserId: string): Promise<void> {

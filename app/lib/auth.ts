@@ -1,19 +1,24 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { clerkClient } from "@clerk/nextjs/server";
-import { upsertAccountSnapshotByClerkId } from "@/app/lib/server/modules/account/account.service";
+import {
+  getBillingSnapshotByBrandId,
+  upsertAccountSnapshotByBrandId,
+} from "@/app/lib/server/modules/account/account.service";
+import { getBrandByClerkId } from "@/app/lib/server/modules/brands/brands.service";
 import { upsertAppUser } from "@/app/lib/server/modules/users/users.service";
 import {
   type BillingStatus,
   type BillingSnapshot,
   getMercadoPagoPreapprovalById,
   hasActiveAdminAccess,
-  readClerkUserIdFromExternalReference,
+  readBrandIdFromExternalReference,
   resolveBillingStatusFromPreapprovalStatus,
 } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
 
 export type OnboardingData = {
   onboardingComplete: boolean;
+  brandId?: string;
   firstName?: string;
   lastName?: string;
   fullName?: string;
@@ -68,6 +73,7 @@ export function getOnboardingDataFromUser(user: ClerkUser): OnboardingData {
 
   return {
     onboardingComplete: metadata.onboardingComplete === true,
+    brandId: readMetadataString(metadata, "brandId"),
     firstName: metadataFirstName ?? fallbackFromFullName.firstName,
     lastName: metadataLastName ?? fallbackFromFullName.lastName,
     fullName: metadataFullName,
@@ -77,6 +83,40 @@ export function getOnboardingDataFromUser(user: ClerkUser): OnboardingData {
     brandSlug: readMetadataString(metadata, "brandSlug"),
     adminPath: readMetadataString(metadata, "adminPath"),
     storePath: readMetadataString(metadata, "storePath"),
+  };
+}
+
+export async function resolveOnboardingDataForUser(user: ClerkUser): Promise<OnboardingData> {
+  const onboarding = getOnboardingDataFromUser(user);
+  if (onboarding.brandId) {
+    return onboarding;
+  }
+
+  const brand = await getBrandByClerkId(user.id);
+  if (!brand) {
+    return onboarding;
+  }
+
+  try {
+    const client = await clerkClient();
+    await client.users.updateUserMetadata(user.id, {
+      publicMetadata: {
+        brandId: brand.id,
+      },
+    });
+  } catch (error) {
+    console.error("[auth] failed to backfill brandId in Clerk metadata", {
+      clerkUserId: user.id,
+      brandId: brand.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  return {
+    ...onboarding,
+    brandId: brand.id,
+    brandName: onboarding.brandName ?? brand.name,
+    adminPath: onboarding.adminPath ?? brand.admin_path ?? "/admin",
   };
 }
 
@@ -118,21 +158,46 @@ export function getBillingDataFromUser(user: ClerkUser): BillingData {
   };
 }
 
-export async function requireSignedInUser(): Promise<ClerkUser> {
+export async function getBillingDataForBrand(
+  brandId: string | null | undefined,
+  clerkUserId?: string | null,
+): Promise<BillingData> {
+  if (!brandId) {
+    return {
+      mode: null,
+      status: "none",
+      trialDays: null,
+      trialStartedAt: null,
+      trialEndsAt: null,
+      mercadopagoPreapprovalId: null,
+      mercadopagoPreapprovalStatus: null,
+    };
+  }
+
+  return getBillingSnapshotByBrandId(brandId, clerkUserId);
+}
+
+export async function requireSignedInUser(redirectAfterSignIn?: string): Promise<ClerkUser> {
   const traceId = crypto.randomUUID();
   const { userId } = await auth();
-  console.log(`[onboarding-debug][${traceId}][auth.requireSignedInUser] auth resolved`, {
-    hasUserId: Boolean(userId),
-  });
+  // console.log(`[onboarding-debug][${traceId}][auth.requireSignedInUser] auth resolved`, {
+  //   hasUserId: Boolean(userId),
+  // });
 
   if (!userId) {
-    redirect("/sign-in");
+    const redirectUrl = redirectAfterSignIn
+      ? `/sign-in?redirect_url=${encodeURIComponent(redirectAfterSignIn)}`
+      : "/sign-in";
+    redirect(redirectUrl);
   }
 
   const user = await currentUser();
 
   if (!user) {
-    redirect("/sign-in");
+    const redirectUrl = redirectAfterSignIn
+      ? `/sign-in?redirect_url=${encodeURIComponent(redirectAfterSignIn)}`
+      : "/sign-in";
+    redirect(redirectUrl);
   }
 
   const primaryEmail =
@@ -149,11 +214,11 @@ export async function requireSignedInUser(): Promise<ClerkUser> {
   const resolvedLastName = metadataLastName ?? fallbackFromFullName.lastName ?? null;
   const rebuiltFullName = [resolvedFirstName, resolvedLastName].filter(Boolean).join(" ").trim();
   const resolvedFullName = metadataFullName ?? (rebuiltFullName || null);
-  console.log(`[onboarding-debug][${traceId}][auth.requireSignedInUser] clerk user loaded`, {
-    userId: user.id,
-    primaryEmail,
-    onboardingComplete: metadata.onboardingComplete === true,
-  });
+  // console.log(`[onboarding-debug][${traceId}][auth.requireSignedInUser] clerk user loaded`, {
+  //   userId: user.id,
+  //   primaryEmail,
+  //   onboardingComplete: metadata.onboardingComplete === true,
+  // });
 
   await upsertAppUser({
     clerkUserId: user.id,
@@ -181,13 +246,13 @@ export async function requireOnboardedUser(): Promise<{
   billing: BillingData;
 }> {
   const user = await requireSignedInUser();
-  const onboarding = getOnboardingDataFromUser(user);
+  const onboarding = await resolveOnboardingDataForUser(user);
 
-  if (!onboarding.onboardingComplete || !onboarding.brandSlug) {
+  if (!onboarding.onboardingComplete || !onboarding.brandId) {
     redirect("/onboarding");
   }
 
-  let billing = getBillingDataFromUser(user);
+  let billing = await getBillingDataForBrand(onboarding.brandId, user.id);
   if (
     billing.mode === "subscription" &&
     billing.status === "subscription_pending" &&
@@ -195,9 +260,9 @@ export async function requireOnboardedUser(): Promise<{
   ) {
     try {
       const preapproval = await getMercadoPagoPreapprovalById(billing.mercadopagoPreapprovalId);
-      const externalClerkUserId = readClerkUserIdFromExternalReference(preapproval.externalReference);
+      const externalBrandId = readBrandIdFromExternalReference(preapproval.externalReference);
 
-      if (externalClerkUserId === user.id) {
+      if (externalBrandId === onboarding.brandId) {
         const nextStatus = resolveBillingStatusFromPreapprovalStatus(preapproval.status);
         const hasStatusChange =
           nextStatus !== billing.status || billing.mercadopagoPreapprovalStatus !== preapproval.status;
@@ -223,7 +288,7 @@ export async function requireOnboardedUser(): Promise<{
       }
     } catch (error) {
       console.error("[billing-sync] failed to refresh Mercado Pago preapproval", {
-        clerkUserId: user.id,
+        brandId: onboarding.brandId,
         preapprovalId: billing.mercadopagoPreapprovalId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -238,7 +303,8 @@ export async function requireOnboardedUser(): Promise<{
       },
     });
 
-    await upsertAccountSnapshotByClerkId({
+    await upsertAccountSnapshotByBrandId({
+      brandId: onboarding.brandId,
       clerkUserId: user.id,
       billingStatus: "trial_expired",
       trialStartedAt: billing.trialStartedAt,
@@ -254,7 +320,8 @@ export async function requireOnboardedUser(): Promise<{
   }
 
   try {
-    await upsertAccountSnapshotByClerkId({
+    await upsertAccountSnapshotByBrandId({
+      brandId: onboarding.brandId,
       clerkUserId: user.id,
       billingStatus: billing.status,
       trialStartedAt: billing.trialStartedAt,
@@ -264,7 +331,7 @@ export async function requireOnboardedUser(): Promise<{
     });
   } catch (error) {
     console.error("[account-sync] failed to upsert account snapshot from metadata", {
-      clerkUserId: user.id,
+      brandId: onboarding.brandId,
       error: error instanceof Error ? error.message : String(error),
     });
   }

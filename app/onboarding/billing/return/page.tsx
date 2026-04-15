@@ -1,18 +1,17 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { upsertAccountSnapshotByClerkId } from "@/app/lib/server/modules/account/account.service";
+import { upsertAccountSnapshotByBrandId } from "@/app/lib/server/modules/account/account.service";
 import {
-  getBillingDataFromUser,
-  getOnboardingDataFromUser,
+  getBillingDataForBrand,
+  resolveOnboardingDataForUser,
   requireSignedInUser,
 } from "@/app/lib/auth";
 import {
   getMercadoPagoPreapprovalById,
   hasActiveAdminAccess,
-  readClerkUserIdFromExternalReference,
+  readBrandIdFromExternalReference,
   resolveBillingStatusFromPreapprovalStatus,
 } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
-import { buildAdminPath } from "@/app/lib/brand";
 
 type ReturnPageProps = {
   searchParams: Promise<{
@@ -21,12 +20,16 @@ type ReturnPageProps = {
 };
 
 export default async function BillingReturnPage({ searchParams }: ReturnPageProps) {
-  const [user, query] = await Promise.all([requireSignedInUser(), searchParams]);
-  const billing = getBillingDataFromUser(user);
+  const query = await searchParams;
+  const returnPath = query.preapproval_id
+    ? `/onboarding/billing/return?preapproval_id=${encodeURIComponent(query.preapproval_id)}`
+    : "/onboarding/billing/return";
+  const user = await requireSignedInUser(returnPath);
+  const onboarding = await resolveOnboardingDataForUser(user);
+  const billing = await getBillingDataForBrand(onboarding.brandId, user.id);
   const preapprovalId = query.preapproval_id ?? billing.mercadopagoPreapprovalId ?? undefined;
-  const onboarding = getOnboardingDataFromUser(user);
 
-  if (!onboarding.brandSlug) {
+  if (!onboarding.brandId) {
     redirect("/onboarding?error=missing-brand");
   }
 
@@ -36,9 +39,9 @@ export default async function BillingReturnPage({ searchParams }: ReturnPageProp
 
   try {
     const preapproval = await getMercadoPagoPreapprovalById(preapprovalId);
-    const externalClerkUserId = readClerkUserIdFromExternalReference(preapproval.externalReference);
+    const externalBrandId = readBrandIdFromExternalReference(preapproval.externalReference);
 
-    if (!externalClerkUserId || externalClerkUserId !== user.id) {
+    if (!externalBrandId || externalBrandId !== onboarding.brandId) {
       redirect("/onboarding?plan=subscription&error=invalid-reference");
     }
 
@@ -54,7 +57,8 @@ export default async function BillingReturnPage({ searchParams }: ReturnPageProp
       },
     });
 
-    await upsertAccountSnapshotByClerkId({
+    await upsertAccountSnapshotByBrandId({
+      brandId: onboarding.brandId,
       clerkUserId: user.id,
       billingStatus,
       trialStartedAt: null,
@@ -69,9 +73,10 @@ export default async function BillingReturnPage({ searchParams }: ReturnPageProp
   }
 
   const refreshedUser = await requireSignedInUser();
-  const refreshedBilling = getBillingDataFromUser(refreshedUser);
+  const refreshedOnboarding = await resolveOnboardingDataForUser(refreshedUser);
+  const refreshedBilling = await getBillingDataForBrand(refreshedOnboarding.brandId, refreshedUser.id);
   if (hasActiveAdminAccess(refreshedBilling)) {
-    redirect(buildAdminPath(onboarding.brandSlug));
+    redirect("/admin");
   }
 
   redirect("/onboarding?billing=required");

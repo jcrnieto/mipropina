@@ -2,6 +2,7 @@ import { supabaseRestRequest } from "@/app/lib/server/supabase/client";
 
 export type MenuMipropinaRow = {
   id: string;
+  restaurant_id?: string;
   user_id: string;
   auth_user_id: string;
   file_url: string;
@@ -14,6 +15,7 @@ export type MenuMipropinaRow = {
 };
 
 export type MenuMipropinaPayload = {
+  restaurant_id: string;
   user_id: string;
   auth_user_id: string;
   file_url: string;
@@ -24,12 +26,12 @@ export type MenuMipropinaPayload = {
 };
 
 const MENU_SELECT =
-  "id,user_id,auth_user_id,file_url,file_path,mime_type,file_size_bytes,is_active,created_at,updated_at";
+  "id,restaurant_id,user_id,auth_user_id,file_url,file_path,mime_type,file_size_bytes,is_active,created_at,updated_at";
 
-export async function listMenuByAuthUserId(authUserId: string): Promise<MenuMipropinaRow[]> {
-  const encodedAuthId = encodeURIComponent(authUserId);
+export async function listMenuByRestaurantId(restaurantId: string): Promise<MenuMipropinaRow[]> {
+  const encodedRestaurantId = encodeURIComponent(restaurantId);
   const response = await supabaseRestRequest(
-    `/rest/v1/menu_mipropina?auth_user_id=eq.${encodedAuthId}&select=${MENU_SELECT}&order=updated_at.desc&limit=1`,
+    `/rest/v1/menu_mipropina?restaurant_id=eq.${encodedRestaurantId}&select=${MENU_SELECT}&order=updated_at.desc&limit=1`,
     {
       method: "GET",
       headers: {
@@ -41,13 +43,13 @@ export async function listMenuByAuthUserId(authUserId: string): Promise<MenuMipr
   return (await response.json()) as MenuMipropinaRow[];
 }
 
-export async function patchMenuByAuthUserId(
-  authUserId: string,
+export async function patchMenuByRestaurantId(
+  restaurantId: string,
   payload: Partial<MenuMipropinaPayload>,
 ): Promise<MenuMipropinaRow[]> {
-  const encodedAuthId = encodeURIComponent(authUserId);
+  const encodedRestaurantId = encodeURIComponent(restaurantId);
   const response = await supabaseRestRequest(
-    `/rest/v1/menu_mipropina?auth_user_id=eq.${encodedAuthId}`,
+    `/rest/v1/menu_mipropina?restaurant_id=eq.${encodedRestaurantId}`,
     {
       method: "PATCH",
       headers: {

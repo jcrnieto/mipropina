@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowRight,
+  ChevronLeft,
   CircleCheck,
   Clock3,
   ExternalLink,
@@ -17,9 +18,9 @@ import { RatingConfigEditor } from "@/app/components/admin/RatingConfigEditor";
 import { WaitersSection } from "@/app/components/admin/WaitersSection";
 import { AnalyticsDashboard } from "@/app/components/admin/AnalyticsDashboard";
 import { requireOnboardedUser } from "@/app/lib/auth";
-import { buildAdminPath } from "@/app/lib/brand";
 import { NavbarAdmin } from "@/app/components/admin/NavbarAdmin";
 import { UpgradeToProCard } from "@/app/components/admin/UpgradeToProCard";
+import { getRestaurantByBrandSlug } from "@/app/lib/server/modules/restaurants/restaurants.service";
 
 type AdminBrandPageProps = {
   params: Promise<{ brandSlug: string }>;
@@ -51,21 +52,31 @@ function getTrialDaysRemaining(trialEndsAt: string | null): number | null {
 }
 
 export default async function AdminBrandPage({ params }: AdminBrandPageProps) {
-  const [{ brandSlug }, { onboarding, billing }] = await Promise.all([params, requireOnboardedUser()]);
+  const [{ brandSlug }, { user, onboarding, billing }] = await Promise.all([params, requireOnboardedUser()]);
+  const restaurant = await getRestaurantByBrandSlug(brandSlug);
 
-  if (brandSlug !== onboarding.brandSlug) {
-    redirect(buildAdminPath(onboarding.brandSlug!));
+  if (!restaurant || restaurant.auth_user_id !== user.id) {
+    redirect("/admin");
   }
 
   const badge = getBillingBadge(billing.status);
   const trialDaysLeft = getTrialDaysRemaining(billing.trialEndsAt);
   const storeUrl = `/${brandSlug}`;
+  const displayBrandName = restaurant.brand_name?.trim() || onboarding.brandName || "Tu restaurante";
 
   return (
     <main className="min-h-screen bg-[linear-gradient(160deg,#eef4ff_0%,#f8fbff_42%,#ffffff_100%)]">
-      <NavbarAdmin brandSlug={brandSlug} brandName={onboarding.brandName} />
+      <NavbarAdmin brandSlug={brandSlug} brandName={displayBrandName} />
 
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-6">
+        <Link
+          href="/admin"
+          className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#d8e0ef] bg-white px-4 py-2 text-sm font-medium text-[#244e9b] shadow-[0_10px_20px_rgba(30,48,90,0.06)] transition hover:bg-[#f7f9ff]"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Volver a locales
+        </Link>
+
         {billing.status === "trial_active" ? <UpgradeToProCard trialEndsAt={billing.trialEndsAt} /> : null}
 
         <section
@@ -81,7 +92,7 @@ export default async function AdminBrandPage({ params }: AdminBrandPageProps) {
                 <div>
                   <p className="text-xs uppercase tracking-[0.16em] text-[#6b7a99]">Control central</p>
                   <h1 className="mt-2 font-display text-3xl font-bold text-[#0f1b35] md:text-4xl">
-                    {onboarding.brandName ?? "Tu restaurante"}
+                    {displayBrandName}
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm text-[#5a6a8a] md:text-base">
                     Gestiona identidad, mozos, reseñas y carta desde un solo lugar. Este tablero prioriza tareas de
@@ -138,7 +149,7 @@ export default async function AdminBrandPage({ params }: AdminBrandPageProps) {
           </div>
         </section>
 
-        <AnalyticsDashboard />
+        <AnalyticsDashboard brandSlug={brandSlug} />
 
         <section className="grid gap-4 md:grid-cols-3">
           <a
@@ -222,7 +233,7 @@ export default async function AdminBrandPage({ params }: AdminBrandPageProps) {
         </section>
 
         <section id="calificaciones">
-          <RatingConfigEditor />
+          <RatingConfigEditor brandSlug={brandSlug} />
         </section>
 
         <section id="foto" className="grid gap-6 lg:grid-cols-2">
@@ -231,11 +242,11 @@ export default async function AdminBrandPage({ params }: AdminBrandPageProps) {
         </section>
 
         <section id="menu">
-          <RestaurantMenuUploader />
+          <RestaurantMenuUploader brandSlug={brandSlug} />
         </section>
 
         <section id="mozos">
-          <WaitersSection />
+          <WaitersSection brandSlug={brandSlug} />
         </section>
       </div>
     </main>

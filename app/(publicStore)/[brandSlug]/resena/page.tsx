@@ -5,16 +5,20 @@ import { PublicStoreFooter } from "@/app/components/publicStore/PublicStoreFoote
 
 type PublicStoreReviewPageProps = {
   params: Promise<{ brandSlug: string }>;
+  searchParams: Promise<{ waiter?: string | string[] }>;
 };
 
-export default async function PublicStoreReviewPage({ params }: PublicStoreReviewPageProps) {
-  const { brandSlug } = await params;
+export default async function PublicStoreReviewPage({ params, searchParams }: PublicStoreReviewPageProps) {
+  const [{ brandSlug }, search] = await Promise.all([params, searchParams]);
+  const waiterId =
+    typeof search.waiter === "string" ? search.waiter : Array.isArray(search.waiter) ? search.waiter[0] : null;
+  const backUrl = waiterId ? `/${brandSlug}?waiter=${encodeURIComponent(waiterId)}` : `/${brandSlug}`;
 
   return (
     <main className="min-h-screen gradient-hero px-4 py-6 md:py-10">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 md:gap-5">
         <Link
-          href={`/${brandSlug}`}
+          href={backUrl}
           className="inline-flex w-fit items-center gap-1 rounded-xl border border-[#d8e0ef] bg-white/70 px-3 py-2 text-sm font-medium text-[#244e9b] transition hover:bg-white"
         >
           <ChevronLeft className="h-4 w-4" />

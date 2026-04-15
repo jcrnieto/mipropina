@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
 import {
-  getBillingDataFromUser,
-  getOnboardingDataFromUser,
+  getBillingDataForBrand,
+  resolveOnboardingDataForUser,
   requireSignedInUser,
 } from "../lib/auth";
-import { buildAdminPath } from "../lib/brand";
 import { hasActiveAdminAccess } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
 import { submitOnboarding } from "./actions";
 import { ArrowRight, Building2, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
@@ -55,8 +54,8 @@ function resolveErrorMessage(errorRaw: string | undefined): string | null {
 
 export default async function OnboardingPage({ searchParams }: OnboardingPageProps) {
   const [user, query] = await Promise.all([requireSignedInUser(), searchParams]);
-  const onboarding = getOnboardingDataFromUser(user);
-  const billing = getBillingDataFromUser(user);
+  const onboarding = await resolveOnboardingDataForUser(user);
+  const billing = await getBillingDataForBrand(onboarding.brandId, user.id);
   const selectedPlan = resolvePlan(query.plan, billing.mode);
   const forceSubscriptionFlow = query.plan === "subscription";
   const trialDays = resolveTrialDays(query.trialDays, billing.trialDays);
@@ -64,11 +63,10 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
 
   if (
     onboarding.onboardingComplete &&
-    onboarding.brandSlug &&
     hasActiveAdminAccess(billing) &&
     !forceSubscriptionFlow
   ) {
-    redirect(buildAdminPath(onboarding.brandSlug));
+    redirect("/admin");
   }
 
   const showBillingRequired = query.billing === "required";
@@ -87,11 +85,11 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
             </span>
 
             <h1 className="mt-5 font-display text-4xl font-bold leading-[1.05] text-[#0f1b35] md:text-5xl">
-              Completa tus datos personales
+              Crea tu marca y tu primer local
             </h1>
             <p className="mt-4 text-base leading-relaxed text-[#4a5c7b] md:text-lg">
-              Cargamos los datos de tu restaurante y luego elegis si queres activar prueba gratis o ir a
-              suscripcion en Mercado Pago.
+              Primero definimos la marca y el primer local. Despues activas la prueba gratis o continuas
+              al pago en Mercado Pago.
             </p>
 
             <div className="mt-7 space-y-3">
@@ -102,7 +100,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
               <div className="flex items-start gap-3 rounded-xl border border-[#d4dbee] bg-white/85 p-3">
                 <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-[#2d62e0]" />
                 <p className="text-sm text-[#334767]">
-                  La marca define tus rutas: <code>/admin/tu-marca</code> y <code>/tu-marca</code>.
+                  La marca agrupa tus locales y cada local tiene su propia ruta publica y panel operativo.
                 </p>
               </div>
               <div className="flex items-start gap-3 rounded-xl border border-[#d4dbee] bg-white/85 p-3">
@@ -115,7 +113,9 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
           </aside>
 
           <div className="rounded-2xl border border-[#d7ddeb] bg-white/92 p-6 shadow-[0_8px_24px_rgba(16,30,64,0.08)] md:p-8">
-            <h2 className="font-display text-2xl font-bold text-[#0f1b35] md:text-3xl">Datos del titular</h2>
+            <h2 className="font-display text-2xl font-bold text-[#0f1b35] md:text-3xl">
+              Datos iniciales
+            </h2>
             <p className="mt-2 text-sm text-[#607193]">Te lleva menos de un minuto.</p>
 
             {showBillingRequired ? (
@@ -134,73 +134,6 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
               <input type="hidden" name="billingMode" value={selectedPlan} />
               <input type="hidden" name="trialDays" value={String(trialDays)} />
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label htmlFor="firstName" className="text-sm font-medium text-[#233556]">
-                    Nombre
-                  </label>
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    required
-                    minLength={ONBOARDING_FIELD_RULES.firstName.minLength}
-                    maxLength={ONBOARDING_FIELD_RULES.firstName.maxLength}
-                    defaultValue={onboarding.firstName ?? ""}
-                    className="h-11 w-full rounded-xl border border-[#ccd6ea] bg-[#f7faff] px-3.5 text-sm text-[#0f1b35] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label htmlFor="lastName" className="text-sm font-medium text-[#233556]">
-                    Apellido
-                  </label>
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    required
-                    minLength={ONBOARDING_FIELD_RULES.lastName.minLength}
-                    maxLength={ONBOARDING_FIELD_RULES.lastName.maxLength}
-                    defaultValue={onboarding.lastName ?? ""}
-                    className="h-11 w-full rounded-xl border border-[#ccd6ea] bg-[#f7faff] px-3.5 text-sm text-[#0f1b35] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="phone" className="text-sm font-medium text-[#233556]">
-                  Telefono
-                </label>
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  inputMode="tel"
-                  required
-                  minLength={ONBOARDING_FIELD_RULES.phone.minLength}
-                  maxLength={ONBOARDING_FIELD_RULES.phone.maxLength}
-                  defaultValue={onboarding.phone ?? ""}
-                  className="h-11 w-full rounded-xl border border-[#ccd6ea] bg-[#f7faff] px-3.5 text-sm text-[#0f1b35] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="address" className="text-sm font-medium text-[#233556]">
-                  Direccion
-                </label>
-                <input
-                  id="address"
-                  name="address"
-                  type="text"
-                  required
-                  minLength={ONBOARDING_FIELD_RULES.address.minLength}
-                  maxLength={ONBOARDING_FIELD_RULES.address.maxLength}
-                  defaultValue={onboarding.address ?? ""}
-                  className="h-11 w-full rounded-xl border border-[#ccd6ea] bg-[#f7faff] px-3.5 text-sm text-[#0f1b35] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
-                />
-              </div>
-
               <div className="space-y-1.5">
                 <label htmlFor="brandName" className="text-sm font-medium text-[#233556]">
                   Marca
@@ -209,16 +142,67 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
                   id="brandName"
                   name="brandName"
                   type="text"
-                  required
-                  minLength={ONBOARDING_FIELD_RULES.brandName.minLength}
-                  maxLength={ONBOARDING_FIELD_RULES.brandName.maxLength}
-                  defaultValue={onboarding.brandName ?? ""}
+                    required
+                    minLength={ONBOARDING_FIELD_RULES.brandName.minLength}
+                    maxLength={ONBOARDING_FIELD_RULES.brandName.maxLength}
+                    defaultValue={onboarding.brandName ?? ""}
                   placeholder="Ej: Chetapis"
                   className="h-11 w-full rounded-xl border border-[#ccd6ea] bg-[#f7faff] px-3.5 text-sm text-[#0f1b35] outline-none transition placeholder:text-[#8ca0c2] focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
                 />
                 <p className="text-xs text-[#607193]">
                   Con este nombre generamos rutas como <code>/admin/chetapis</code> y <code>/chetapis</code>.
                 </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="brandSlug" className="text-sm font-medium text-[#233556]">
+                  Slug de marca
+                </label>
+                <input
+                  id="brandSlug"
+                  name="brandSlug"
+                  type="text"
+                  required
+                  minLength={ONBOARDING_FIELD_RULES.brandSlug.minLength}
+                  maxLength={ONBOARDING_FIELD_RULES.brandSlug.maxLength}
+                  defaultValue={onboarding.brandName ? onboarding.brandName.toLowerCase() : ""}
+                  placeholder="Ej: chetapis"
+                  className="h-11 w-full rounded-xl border border-[#ccd6ea] bg-[#f7faff] px-3.5 text-sm text-[#0f1b35] outline-none transition placeholder:text-[#8ca0c2] focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="restaurantName" className="text-sm font-medium text-[#233556]">
+                    Primer local
+                  </label>
+                  <input
+                    id="restaurantName"
+                    name="restaurantName"
+                    type="text"
+                    required
+                    minLength={ONBOARDING_FIELD_RULES.restaurantName.minLength}
+                    maxLength={ONBOARDING_FIELD_RULES.restaurantName.maxLength}
+                    placeholder="Ej: Palermo"
+                    className="h-11 w-full rounded-xl border border-[#ccd6ea] bg-[#f7faff] px-3.5 text-sm text-[#0f1b35] outline-none transition placeholder:text-[#8ca0c2] focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="restaurantSlug" className="text-sm font-medium text-[#233556]">
+                    Slug del local
+                  </label>
+                  <input
+                    id="restaurantSlug"
+                    name="restaurantSlug"
+                    type="text"
+                    required
+                    minLength={ONBOARDING_FIELD_RULES.restaurantSlug.minLength}
+                    maxLength={ONBOARDING_FIELD_RULES.restaurantSlug.maxLength}
+                    placeholder="Ej: chetapis-palermo"
+                    className="h-11 w-full rounded-xl border border-[#ccd6ea] bg-[#f7faff] px-3.5 text-sm text-[#0f1b35] outline-none transition placeholder:text-[#8ca0c2] focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
+                  />
+                </div>
               </div>
 
               <div className="rounded-xl border border-[#dce5f6] bg-[#f6f9ff] p-4 text-sm text-[#334767]">

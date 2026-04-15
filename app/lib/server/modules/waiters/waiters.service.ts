@@ -1,11 +1,15 @@
-import { getOwnerAuthUserIdByBrandSlug } from "@/app/lib/server/modules/personal-data/personal-data.service";
+import {
+  getOwnerByBrandSlug,
+  getPrimaryRestaurantByClerkId,
+} from "@/app/lib/server/modules/restaurants/restaurants.service";
 import { getUsersMipropinaIdByClerkId } from "@/app/lib/server/modules/users/users.repository";
 import {
-  deleteEmployeeByAuthUserIdAndEmployeeId,
+  deleteEmployeeByRestaurantIdAndEmployeeId,
+  getEmployeeByRestaurantIdAndEmployeeId,
   insertEmployee,
-  listEmployeesByAuthUserId,
+  listEmployeesByRestaurantId,
   type EmployeeRow,
-  updateEmployeeByAuthUserIdAndEmployeeId,
+  updateEmployeeByRestaurantIdAndEmployeeId,
 } from "@/app/lib/server/modules/waiters/waiters.repository";
 
 type WaiterResponseRow = {
@@ -43,8 +47,13 @@ export async function createEmployeeByClerkId(input: {
   if (!usersMipropinaId) {
     throw new Error("Cannot create employee without users_mipropina row");
   }
+  const primaryRestaurant = await getPrimaryRestaurantByClerkId(input.clerkUserId);
+  if (!primaryRestaurant) {
+    throw new Error("Cannot create employee without restaurant row");
+  }
 
   const created = await insertEmployee({
+    restaurant_id: primaryRestaurant.id,
     user_id: usersMipropinaId,
     auth_user_id: input.clerkUserId,
     name: input.name,
@@ -59,7 +68,12 @@ export async function createEmployeeByClerkId(input: {
 }
 
 export async function listEmployeesByClerkId(clerkUserId: string): Promise<WaiterResponseRow[]> {
-  const rows = await listEmployeesByAuthUserId(clerkUserId);
+  const primaryRestaurant = await getPrimaryRestaurantByClerkId(clerkUserId);
+  if (!primaryRestaurant) {
+    return [];
+  }
+
+  const rows = await listEmployeesByRestaurantId(primaryRestaurant.id);
   return rows.map(mapEmployeeRow);
 }
 
@@ -67,7 +81,12 @@ export async function deleteEmployeeByClerkId(
   clerkUserId: string,
   employeeId: string,
 ): Promise<void> {
-  await deleteEmployeeByAuthUserIdAndEmployeeId(clerkUserId, employeeId);
+  const primaryRestaurant = await getPrimaryRestaurantByClerkId(clerkUserId);
+  if (!primaryRestaurant) {
+    throw new Error("Cannot delete employee without restaurant row");
+  }
+
+  await deleteEmployeeByRestaurantIdAndEmployeeId(primaryRestaurant.id, employeeId);
 }
 
 export async function updateEmployeeByClerkId(input: {
@@ -80,8 +99,13 @@ export async function updateEmployeeByClerkId(input: {
   mercadopagoLink: string;
   image?: string | null;
 }): Promise<WaiterResponseRow> {
-  const updated = await updateEmployeeByAuthUserIdAndEmployeeId({
-    authUserId: input.clerkUserId,
+  const primaryRestaurant = await getPrimaryRestaurantByClerkId(input.clerkUserId);
+  if (!primaryRestaurant) {
+    throw new Error("Cannot update employee without restaurant row");
+  }
+
+  const updated = await updateEmployeeByRestaurantIdAndEmployeeId({
+    restaurantId: primaryRestaurant.id,
     employeeId: input.employeeId,
     payload: {
       name: input.name,
@@ -97,12 +121,24 @@ export async function updateEmployeeByClerkId(input: {
 }
 
 export async function listEmployeesByBrandSlug(brandSlug: string): Promise<WaiterResponseRow[]> {
-  const ownerAuthUserId = await getOwnerAuthUserIdByBrandSlug(brandSlug);
-
-  if (!ownerAuthUserId) {
+  const owner = await getOwnerByBrandSlug(brandSlug);
+  if (!owner?.restaurant_id) {
     return [];
   }
 
-  const rows = await listEmployeesByAuthUserId(ownerAuthUserId);
+  const rows = await listEmployeesByRestaurantId(owner.restaurant_id);
   return rows.map(mapEmployeeRow);
+}
+
+export async function getEmployeeByBrandSlugAndId(
+  brandSlug: string,
+  employeeId: string,
+): Promise<WaiterResponseRow | null> {
+  const owner = await getOwnerByBrandSlug(brandSlug);
+  if (!owner?.restaurant_id) {
+    return null;
+  }
+
+  const row = await getEmployeeByRestaurantIdAndEmployeeId(owner.restaurant_id, employeeId);
+  return row ? mapEmployeeRow(row) : null;
 }

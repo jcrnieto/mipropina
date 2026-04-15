@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { ArrowRight, CreditCard, MapPin, Phone, Search, Send, Star } from "lucide-react";
@@ -57,7 +58,70 @@ const RATING_LABELS: Record<number, string> = {
   5: "Excelente",
 };
 
+type RatingVisual = {
+  badgeClass: string;
+  cardClass: string;
+  face: string;
+  starClass: string;
+  starHoverClass: string;
+};
+
+function getRatingVisual(score: number): RatingVisual {
+  switch (score) {
+    case 1:
+      return {
+        badgeClass: "bg-[#fee2e2] text-[#b91c1c]",
+        cardClass: "border-[#fecaca] bg-[#fff5f5]",
+        face: "Malo",
+        starClass: "fill-[#ef4444] text-[#ef4444]",
+        starHoverClass: "hover:bg-[#fee2e2]",
+      };
+    case 2:
+      return {
+        badgeClass: "bg-[#ffedd5] text-[#c2410c]",
+        cardClass: "border-[#fed7aa] bg-[#fff7ed]",
+        face: "Regular",
+        starClass: "fill-[#f97316] text-[#f97316]",
+        starHoverClass: "hover:bg-[#ffedd5]",
+      };
+    case 3:
+      return {
+        badgeClass: "bg-[#fef9c3] text-[#a16207]",
+        cardClass: "border-[#fde68a] bg-[#fffbeb]",
+        face: "Bueno",
+        starClass: "fill-[#eab308] text-[#eab308]",
+        starHoverClass: "hover:bg-[#fef9c3]",
+      };
+    case 4:
+      return {
+        badgeClass: "bg-[#ecfccb] text-[#3f6212]",
+        cardClass: "border-[#bef264] bg-[#f7fee7]",
+        face: "Muy bueno",
+        starClass: "fill-[#84cc16] text-[#84cc16]",
+        starHoverClass: "hover:bg-[#ecfccb]",
+      };
+    case 5:
+      return {
+        badgeClass: "bg-[#dcfce7] text-[#166534]",
+        cardClass: "border-[#86efac] bg-[#f0fdf4]",
+        face: "Excelente",
+        starClass: "fill-[#22c55e] text-[#22c55e]",
+        starHoverClass: "hover:bg-[#dcfce7]",
+      };
+    default:
+      return {
+        badgeClass: "bg-[#eef2ff] text-[#5e6f8f]",
+        cardClass: "border-[#dfe4f0] bg-[#f8faff]",
+        face: "-",
+        starClass: "fill-[#f5b94c] text-[#f5b94c]",
+        starHoverClass: "hover:bg-[#eef3ff]",
+      };
+  }
+}
+
 export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
+  const searchParams = useSearchParams();
+  const waiterIdFromQuery = searchParams.get("waiter");
   const [waiters, setWaiters] = useState<Waiter[]>([]);
   const [store, setStore] = useState<StoreInfo>(EMPTY_STORE);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,6 +130,7 @@ export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
   const [ratingFeatures, setRatingFeatures] = useState<string[]>([]);
   const [stars, setStars] = useState<number[]>([]);
   const [comment, setComment] = useState("");
+  const [waiterServiceStars, setWaiterServiceStars] = useState(0);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [ratingError, setRatingError] = useState<string | null>(null);
   const [ratingSuccess, setRatingSuccess] = useState<string | null>(null);
@@ -95,11 +160,17 @@ export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
         }
 
         if (isMounted) {
-          setStore(json.store ?? EMPTY_STORE);
+          const loadedWaiters = json.waiters ?? [];
           const loadedFeatures = (json.ratingFeatures ?? []).slice(0, 5);
+          const matchedWaiter = waiterIdFromQuery
+            ? loadedWaiters.find((waiter) => waiter.id === waiterIdFromQuery) ?? null
+            : null;
+
+          setStore(json.store ?? EMPTY_STORE);
           setRatingFeatures(loadedFeatures);
           setStars(loadedFeatures.map(() => 0));
-          setWaiters(json.waiters ?? []);
+          setWaiters(loadedWaiters);
+          setSelectedWaiter(matchedWaiter);
         }
       } catch (loadError) {
         if (isMounted) {
@@ -116,7 +187,7 @@ export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
     return () => {
       isMounted = false;
     };
-  }, [brandSlug]);
+  }, [brandSlug, waiterIdFromQuery]);
 
   const brandName = useMemo(
     () => store.brandName?.trim() || formatBrandName(brandSlug),
@@ -131,10 +202,16 @@ export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
       return fullName.includes(term);
     });
   }, [waiters, search]);
+
+  const hasWaiterContext = Boolean(selectedWaiter);
   const hasRatingConfig = ratingFeatures.length > 0;
-  const showRatingSection = mode !== "tip";
+  const showRatingSection = mode !== "tip" && (hasRatingConfig || hasWaiterContext);
   const showTipSection = mode !== "review";
-  const canSubmitRating = hasRatingConfig && stars.length === ratingFeatures.length && stars.every((value) => value >= 1 && value <= 5);
+  const isWaiterLocked = Boolean(waiterIdFromQuery && selectedWaiter);
+  const hasValidFeatureScores =
+    ratingFeatures.length === 0 || (stars.length === ratingFeatures.length && stars.every((value) => value >= 1 && value <= 5));
+  const hasValidWaiterScore = !hasWaiterContext || (waiterServiceStars >= 1 && waiterServiceStars <= 5);
+  const canSubmitRating = (hasRatingConfig || hasWaiterContext) && hasValidFeatureScores && hasValidWaiterScore;
 
   const submitRating = async () => {
     if (!canSubmitRating) {
@@ -155,6 +232,8 @@ export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
         body: JSON.stringify({
           stars,
           comment,
+          waiterId: selectedWaiter?.id ?? null,
+          waiterServiceStars: hasWaiterContext ? waiterServiceStars : null,
         }),
       });
 
@@ -169,6 +248,7 @@ export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
 
       setStars(ratingFeatures.map(() => 0));
       setComment("");
+      setWaiterServiceStars(0);
       setRatingSuccess("Gracias por tu calificacion.");
     } catch (submitError) {
       setRatingError(submitError instanceof Error ? submitError.message : "No se pudo enviar la calificacion.");
@@ -214,47 +294,92 @@ export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
           </div>
         </div>
 
-        {showRatingSection && hasRatingConfig ? (
+        {showRatingSection ? (
           <div className="mt-4 rounded-2xl border border-[#cfd7e6] bg-white/80 p-4">
+            {hasWaiterContext ? (
+              <div className="mb-3 rounded-2xl border border-[#d9e2f2] bg-[#f7faff] px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#607193]">QR de mozo</p>
+                <p className="mt-1 text-sm font-semibold text-[#1b2c4e]">
+                  {selectedWaiter?.firstName} {selectedWaiter?.lastName}
+                </p>
+              </div>
+            ) : null}
+
             <p className="text-sm font-semibold text-[#5e6f8f]">Califica tu experiencia</p>
             <p className="mt-1 text-xs text-[#6b7280]">
               5 excelente, 4 muy bueno, 3 bueno, 2 regular, 1 malo.
             </p>
 
             <div className="mt-3 space-y-3">
-              {ratingFeatures.map((feature, featureIndex) => (
-                <div key={`${feature}-${featureIndex}`} className="rounded-xl border border-[#dfe4f0] bg-[#f8faff] px-3 py-2">
+              {hasWaiterContext ? (
+                <div className={`rounded-xl border px-3 py-2 ${getRatingVisual(waiterServiceStars).cardClass}`}>
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-[#1f2937]">{feature}</p>
-                    <span className="text-xs font-semibold text-[#5e6f8f]">
-                      {stars[featureIndex] ? RATING_LABELS[stars[featureIndex]] : "-"}
+                    <p className="text-sm font-medium text-[#1f2937]">Atencion del mozo</p>
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs font-semibold ${getRatingVisual(waiterServiceStars).badgeClass}`}
+                    >
+                      {waiterServiceStars
+                        ? `${RATING_LABELS[waiterServiceStars]} ${getRatingVisual(waiterServiceStars).face}`
+                        : "-"}
                     </span>
                   </div>
 
                   <div className="mt-2 flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((value) => {
-                      const active = (stars[featureIndex] ?? 0) >= value;
+                      const visual = getRatingVisual(waiterServiceStars);
+                      const active = waiterServiceStars >= value;
                       return (
                         <button
-                          key={`${featureIndex}-${value}`}
+                          key={`waiter-service-${value}`}
                           type="button"
-                          onClick={() =>
-                            setStars((previous) =>
-                              previous.map((item, itemIndex) => (itemIndex === featureIndex ? value : item)),
-                            )
-                          }
-                          className="rounded-md p-1 transition-colors hover:bg-[#eef3ff]"
-                          aria-label={`Puntuar ${feature} con ${value} estrellas`}
+                          onClick={() => setWaiterServiceStars(value)}
+                          className={`rounded-md p-1 transition-colors ${visual.starHoverClass}`}
+                          aria-label={`Puntuar la atencion del mozo con ${value} estrellas`}
                         >
-                          <Star
-                            className={`h-5 w-5 ${active ? "fill-[#f5b94c] text-[#f5b94c]" : "text-[#b9c5dc]"}`}
-                          />
+                          <Star className={`h-5 w-5 ${active ? visual.starClass : "text-[#b9c5dc]"}`} />
                         </button>
                       );
                     })}
                   </div>
                 </div>
-              ))}
+              ) : null}
+
+              {ratingFeatures.map((feature, featureIndex) => {
+                const selectedStars = stars[featureIndex] ?? 0;
+                const visual = getRatingVisual(selectedStars);
+
+                return (
+                  <div key={`${feature}-${featureIndex}`} className={`rounded-xl border px-3 py-2 ${visual.cardClass}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-[#1f2937]">{feature}</p>
+                      <span className={`rounded-full px-2 py-1 text-xs font-semibold ${visual.badgeClass}`}>
+                        {selectedStars ? `${RATING_LABELS[selectedStars]} ${visual.face}` : "-"}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((value) => {
+                        const active = selectedStars >= value;
+                        return (
+                          <button
+                            key={`${featureIndex}-${value}`}
+                            type="button"
+                            onClick={() =>
+                              setStars((previous) =>
+                                previous.map((item, itemIndex) => (itemIndex === featureIndex ? value : item)),
+                              )
+                            }
+                            className={`rounded-md p-1 transition-colors ${visual.starHoverClass}`}
+                            aria-label={`Puntuar ${feature} con ${value} estrellas`}
+                          >
+                            <Star className={`h-5 w-5 ${active ? visual.starClass : "text-[#b9c5dc]"}`} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="mt-3">
@@ -290,103 +415,107 @@ export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
         ) : null}
 
         {showTipSection ? (
-        <div className="mt-4 flex flex-1 flex-col">
-          <div className="rounded-2xl border border-[#cfd7e6] bg-white/80 p-5">
-            <p className="text-sm text-[#64748b]">Mozo seleccionado</p>
-            <p className="mt-1 text-xl font-semibold text-[#1f2937]">
-              {selectedWaiter ? `${selectedWaiter.firstName} ${selectedWaiter.lastName}` : "-"}
-            </p>
-            <p className="mt-2 text-sm text-[#6b7280]">
-              Elegi un mozo de la lista y confirma desde el boton de pago.
-            </p>
-          </div>
+          <div className="mt-4 flex flex-1 flex-col">
+            <div className="rounded-2xl border border-[#cfd7e6] bg-white/80 p-5">
+              <p className="text-sm text-[#64748b]">Mozo seleccionado</p>
+              <p className="mt-1 text-xl font-semibold text-[#1f2937]">
+                {selectedWaiter ? `${selectedWaiter.firstName} ${selectedWaiter.lastName}` : "-"}
+              </p>
+              <p className="mt-2 text-sm text-[#6b7280]">
+                {isWaiterLocked
+                  ? "Este QR ya esta asociado a este mozo. Continua con el boton de pago."
+                  : "Elegi un mozo de la lista y confirma desde el boton de pago."}
+              </p>
+            </div>
 
-          <div className="mt-3 space-y-3">
-          <div className="space-y-3">
-            {isLoading ? <p className="text-center text-sm text-[#6b7280]">Cargando mozos...</p> : null}
-            {error ? <p className="text-center text-sm text-red-700">{error}</p> : null}
+            {!isWaiterLocked ? (
+              <div className="mt-3 space-y-3">
+                <div className="space-y-3">
+                  {isLoading ? <p className="text-center text-sm text-[#6b7280]">Cargando mozos...</p> : null}
+                  {error ? <p className="text-center text-sm text-red-700">{error}</p> : null}
 
-            {!isLoading && !error && waiters.length > 0 ? (
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b8ba8]" />
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Buscar mozo por nombre"
-                  className="h-11 w-full rounded-2xl border border-[#cfd7e6] bg-white pl-10 pr-3 text-sm text-[#1f2937] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
-                />
+                  {!isLoading && !error && waiters.length > 0 ? (
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b8ba8]" />
+                      <input
+                        type="search"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Buscar mozo por nombre"
+                        className="h-11 w-full rounded-2xl border border-[#cfd7e6] bg-white pl-10 pr-3 text-sm text-[#1f2937] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
+                      />
+                    </div>
+                  ) : null}
+
+                  {!isLoading && !error && waiters.length === 0 ? (
+                    <p className="rounded-2xl border border-[#d6deea] bg-white px-4 py-5 text-center text-sm text-[#6b7280]">
+                      Este restaurante todavia no cargo mozos.
+                    </p>
+                  ) : null}
+
+                  {!isLoading && !error && waiters.length > 0 && filteredWaiters.length === 0 ? (
+                    <p className="rounded-2xl border border-[#d6deea] bg-white px-4 py-5 text-center text-sm text-[#6b7280]">
+                      No encontramos mozos con ese nombre.
+                    </p>
+                  ) : null}
+
+                  {!isLoading && !error && filteredWaiters.length > 0
+                    ? filteredWaiters.map((waiter, index) => {
+                        const isActive = selectedWaiter?.id === waiter.id;
+                        return (
+                          <motion.button
+                            key={waiter.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedWaiter(waiter);
+                              setModalWaiter(waiter);
+                            }}
+                            initial={{ opacity: 0, y: 14 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.25, delay: index * 0.05, ease: "easeOut" }}
+                            className={`flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-left transition ${
+                              isActive
+                                ? "border-[#4353de] bg-gradient-to-r from-[#2f66dc] to-[#4c3fd8] text-white"
+                                : "border-[#cfd7e6] bg-white text-[#1f2937]"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${
+                                  isActive ? "bg-white/18 text-white" : "bg-[#e7ecf9] text-[#2f66dc]"
+                                }`}
+                              >
+                                {getInitials(waiter).charAt(0)}
+                              </div>
+                              <div className="leading-tight">
+                                <p className="font-semibold">
+                                  {waiter.firstName} {waiter.lastName.charAt(0)}.
+                                </p>
+                                <p className={`text-sm ${isActive ? "text-white/85" : "text-[#4b5563]"}`}>Mozo</p>
+                              </div>
+                            </div>
+                            <ArrowRight className={`h-4 w-4 ${isActive ? "text-white" : "text-[#1f2937]"}`} />
+                          </motion.button>
+                        );
+                      })
+                    : null}
+                </div>
               </div>
             ) : null}
 
-            {!isLoading && !error && waiters.length === 0 ? (
-              <p className="rounded-2xl border border-[#d6deea] bg-white px-4 py-5 text-center text-sm text-[#6b7280]">
-                Este restaurante todavia no cargo mozos.
-              </p>
-            ) : null}
-
-            {!isLoading && !error && waiters.length > 0 && filteredWaiters.length === 0 ? (
-              <p className="rounded-2xl border border-[#d6deea] bg-white px-4 py-5 text-center text-sm text-[#6b7280]">
-                No encontramos mozos con ese nombre.
-              </p>
-            ) : null}
-
-            {!isLoading && !error && filteredWaiters.length > 0
-              ? filteredWaiters.map((waiter, index) => {
-                  const isActive = selectedWaiter?.id === waiter.id;
-                  return (
-                    <motion.button
-                      key={waiter.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedWaiter(waiter);
-                        setModalWaiter(waiter);
-                      }}
-                      initial={{ opacity: 0, y: 14 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.25, delay: index * 0.05, ease: "easeOut" }}
-                      className={`flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-left transition ${
-                        isActive
-                          ? "border-[#4353de] bg-gradient-to-r from-[#2f66dc] to-[#4c3fd8] text-white"
-                          : "border-[#cfd7e6] bg-white text-[#1f2937]"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${
-                            isActive ? "bg-white/18 text-white" : "bg-[#e7ecf9] text-[#2f66dc]"
-                          }`}
-                        >
-                          {getInitials(waiter).charAt(0)}
-                        </div>
-                        <div className="leading-tight">
-                          <p className="font-semibold">
-                            {waiter.firstName} {waiter.lastName.charAt(0)}.
-                          </p>
-                          <p className={`text-sm ${isActive ? "text-white/85" : "text-[#4b5563]"}`}>Mozo</p>
-                        </div>
-                      </div>
-                      <ArrowRight className={`h-4 w-4 ${isActive ? "text-white" : "text-[#1f2937]"}`} />
-                    </motion.button>
-                  );
-                })
-              : null}
+            <button
+              type="button"
+              disabled={waiters.length === 0 || !selectedWaiter}
+              onClick={() => {
+                if (!selectedWaiter) return;
+                setModalWaiter(selectedWaiter);
+              }}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#92dce2] bg-[#c4eef0] px-4 py-4 text-sm font-semibold text-[#07a9b2] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <CreditCard className="h-4 w-4" />
+              Transferi por Mercado Pago
+            </button>
           </div>
-          </div>
-
-          <button
-            type="button"
-            disabled={waiters.length === 0 || !selectedWaiter}
-            onClick={() => {
-              if (!selectedWaiter) return;
-              setModalWaiter(selectedWaiter);
-            }}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#92dce2] bg-[#c4eef0] px-4 py-4 text-sm font-semibold text-[#07a9b2] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <CreditCard className="h-4 w-4" />
-            Transferi por Mercado Pago
-          </button>
-        </div>
         ) : null}
       </div>
 

@@ -5,7 +5,7 @@ import { WaitersList } from "./WaitersList";
 import { WaitersManager } from "./WaitersManager";
 import { Waiter } from "./waiters.types";
 
-export function WaitersSection() {
+export function WaitersSection({ brandSlug }: { brandSlug: string }) {
   const [waiters, setWaiters] = useState<Waiter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +94,7 @@ export function WaitersSection() {
       />
       <div className="mt-6">
         <WaitersList
+          brandSlug={brandSlug}
           waiters={waiters}
           isLoading={isLoading}
           error={error}

@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest } from "next/server";
 import { getSupabaseAdminEnv } from "@/app/lib/server/supabase/client";
 import {
+  getActiveMenuByBrandSlug,
   getActiveMenuByClerkId,
   upsertMenuByClerkId,
 } from "@/app/lib/server/modules/menu/menu.service";
@@ -43,14 +44,15 @@ function normalizeFilename(fileName: string): string {
   return `${safeBase || "menu"}.${safeExtension}`;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const { userId } = await auth();
     if (!userId) {
       return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const menu = await getActiveMenuByClerkId(userId);
+    const brandSlug = new URL(req.url).searchParams.get("brandSlug");
+    const menu = brandSlug ? await getActiveMenuByBrandSlug(brandSlug) : await getActiveMenuByClerkId(userId);
     return Response.json({
       ok: true,
       menu,
@@ -76,7 +78,8 @@ export async function POST(req: NextRequest) {
     }
 
     const metadata = (user.publicMetadata ?? {}) as Record<string, unknown>;
-    const brandSlug = readMetadataString(metadata, "brandSlug");
+    const requestBrandSlug = new URL(req.url).searchParams.get("brandSlug");
+    const brandSlug = requestBrandSlug || readMetadataString(metadata, "brandSlug");
     if (!brandSlug) {
       return Response.json(
         { ok: false, error: "No se encontro brandSlug para guardar la carta." },
@@ -131,6 +134,7 @@ export async function POST(req: NextRequest) {
     const fileUrl = `${url}/storage/v1/object/public/${STORAGE_BUCKET}/${objectPath}`;
     const menu = await upsertMenuByClerkId({
       clerkUserId: userId,
+      brandSlug,
       fileUrl,
       filePath: objectPath,
       mimeType: file.type,

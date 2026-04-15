@@ -1,9 +1,12 @@
-import { getOwnerAuthUserIdByBrandSlug } from "@/app/lib/server/modules/personal-data/personal-data.service";
+import {
+  getOwnerByBrandSlug,
+  getPrimaryRestaurantByClerkId,
+} from "@/app/lib/server/modules/restaurants/restaurants.service";
 import { getUsersMipropinaIdByClerkId } from "@/app/lib/server/modules/users/users.repository";
 import {
   insertMenu,
-  listMenuByAuthUserId,
-  patchMenuByAuthUserId,
+  listMenuByRestaurantId,
+  patchMenuByRestaurantId,
 } from "@/app/lib/server/modules/menu/menu.repository";
 
 export type MenuSnapshot = {
@@ -31,19 +34,24 @@ function mapRowToSnapshot(row: {
 }
 
 export async function getActiveMenuByClerkId(clerkUserId: string): Promise<MenuSnapshot | null> {
-  const rows = await listMenuByAuthUserId(clerkUserId);
+  const restaurant = await getPrimaryRestaurantByClerkId(clerkUserId);
+  if (!restaurant) {
+    return null;
+  }
+
+  const rows = await listMenuByRestaurantId(restaurant.id);
   const row = rows.find((item) => item.is_active) ?? rows[0] ?? null;
   if (!row) return null;
   return mapRowToSnapshot(row);
 }
 
 export async function getActiveMenuByBrandSlug(brandSlug: string): Promise<MenuSnapshot | null> {
-  const ownerAuthUserId = await getOwnerAuthUserIdByBrandSlug(brandSlug);
-  if (!ownerAuthUserId) {
+  const owner = await getOwnerByBrandSlug(brandSlug);
+  if (!owner?.restaurant_id) {
     return null;
   }
 
-  const rows = await listMenuByAuthUserId(ownerAuthUserId);
+  const rows = await listMenuByRestaurantId(owner.restaurant_id);
   const row = rows.find((item) => item.is_active) ?? rows[0] ?? null;
   if (!row) return null;
   return mapRowToSnapshot(row);
@@ -51,6 +59,7 @@ export async function getActiveMenuByBrandSlug(brandSlug: string): Promise<MenuS
 
 export async function upsertMenuByClerkId(input: {
   clerkUserId: string;
+  brandSlug?: string | null;
   fileUrl: string;
   filePath: string;
   mimeType: string;
@@ -63,8 +72,15 @@ export async function upsertMenuByClerkId(input: {
     file_size_bytes: input.fileSizeBytes ?? null,
     is_active: true,
   };
+  const restaurant = input.brandSlug
+    ? await getOwnerByBrandSlug(input.brandSlug)
+    : await getPrimaryRestaurantByClerkId(input.clerkUserId);
+  const restaurantId = "restaurant_id" in (restaurant ?? {}) ? restaurant?.restaurant_id : restaurant?.id;
+  if (!restaurantId) {
+    throw new Error("Cannot upsert menu without restaurant row");
+  }
 
-  const patchedRows = await patchMenuByAuthUserId(input.clerkUserId, payload);
+  const patchedRows = await patchMenuByRestaurantId(restaurantId, payload);
   if (patchedRows.length > 0) {
     return mapRowToSnapshot(patchedRows[0]);
   }
@@ -75,6 +91,7 @@ export async function upsertMenuByClerkId(input: {
   }
 
   const insertedRows = await insertMenu({
+    restaurant_id: restaurantId,
     user_id: usersMipropinaId,
     auth_user_id: input.clerkUserId,
     file_url: input.fileUrl,

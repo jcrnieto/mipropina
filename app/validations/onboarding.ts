@@ -1,14 +1,18 @@
 import { slugifyBrand } from "../lib/brand";
 
 export type OnboardingFormValues = {
+  brandName: string;
+  brandSlug: string;
+  restaurantName: string;
+  restaurantSlug: string;
+};
+
+export type PersonalDataEditableValues = {
   firstName: string;
   lastName: string;
   phone: string;
   address: string;
-  brandName: string;
 };
-
-export type PersonalDataEditableValues = Omit<OnboardingFormValues, "brandName">;
 
 export type OnboardingValidationResult = {
   isValid: boolean;
@@ -31,6 +35,9 @@ export const ONBOARDING_FIELD_RULES = {
   phone: { minLength: 8, maxLength: 24, pattern: "[-0-9+() ]+" },
   address: { minLength: 5, maxLength: 120 },
   brandName: { minLength: 2, maxLength: 80 },
+  brandSlug: { minLength: 2, maxLength: 80 },
+  restaurantName: { minLength: 2, maxLength: 80 },
+  restaurantSlug: { minLength: 2, maxLength: 80 },
 } as const;
 
 function validateEditableFields(values: PersonalDataEditableValues): PersonalDataValidationResult {
@@ -87,13 +94,13 @@ export function validatePersonalDataEditable(
 }
 
 export function validateOnboardingForm(values: OnboardingFormValues): OnboardingValidationResult {
-  const editableValidation = validateEditableFields(values);
   const clean = {
-    ...editableValidation.values,
     brandName: values.brandName.trim(),
+    brandSlug: slugifyBrand(values.brandSlug),
+    restaurantName: values.restaurantName.trim(),
+    restaurantSlug: slugifyBrand(values.restaurantSlug),
   };
   const errors: OnboardingValidationResult["errors"] = {
-    ...editableValidation.errors,
   };
 
   if (
@@ -102,6 +109,27 @@ export function validateOnboardingForm(values: OnboardingFormValues): Onboarding
     !slugifyBrand(clean.brandName)
   ) {
     errors.brandName = "Marca invalida";
+  }
+
+  if (
+    clean.brandSlug.length < ONBOARDING_FIELD_RULES.brandSlug.minLength ||
+    clean.brandSlug.length > ONBOARDING_FIELD_RULES.brandSlug.maxLength
+  ) {
+    errors.brandSlug = "Slug de marca invalido";
+  }
+
+  if (
+    clean.restaurantName.length < ONBOARDING_FIELD_RULES.restaurantName.minLength ||
+    clean.restaurantName.length > ONBOARDING_FIELD_RULES.restaurantName.maxLength
+  ) {
+    errors.restaurantName = "Nombre de local invalido";
+  }
+
+  if (
+    clean.restaurantSlug.length < ONBOARDING_FIELD_RULES.restaurantSlug.minLength ||
+    clean.restaurantSlug.length > ONBOARDING_FIELD_RULES.restaurantSlug.maxLength
+  ) {
+    errors.restaurantSlug = "Slug de local invalido";
   }
 
   return {

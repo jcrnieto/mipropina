@@ -1,12 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpenText, Star, Wallet } from "lucide-react";
+import { BookOpenText, Facebook, Instagram, Music2, Star, Wallet, type LucideIcon } from "lucide-react";
 import { PublicStoreFooter } from "@/app/components/publicStore/PublicStoreFooter";
-import { getPublicStoreInfoByBrandSlug } from "@/app/lib/server/modules/personal-data/personal-data.service";
+import { getPublicStoreInfoByBrandSlug } from "@/app/lib/server/modules/restaurants/restaurants.service";
 import { getActiveMenuByBrandSlug } from "@/app/lib/server/modules/menu/menu.service";
 
 type PublicStorePageProps = {
   params: Promise<{ brandSlug: string }>;
+  searchParams: Promise<{ waiter?: string | string[] }>;
 };
 
 function formatBrandName(brandSlug: string): string {
@@ -17,14 +18,61 @@ function formatBrandName(brandSlug: string): string {
     .join(" ");
 }
 
-export default async function PublicStorePage({ params }: PublicStorePageProps) {
-  const { brandSlug } = await params;
+function toPublicSocialUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const raw = value.trim();
+  if (!raw) return null;
+  const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+type SocialLinkItem = {
+  key: "instagram" | "facebook" | "tiktok";
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
+
+export default async function PublicStorePage({ params, searchParams }: PublicStorePageProps) {
+  const [{ brandSlug }, search] = await Promise.all([params, searchParams]);
+  const waiterId =
+    typeof search.waiter === "string" ? search.waiter : Array.isArray(search.waiter) ? search.waiter[0] : null;
+  const waiterQuery = waiterId ? `?waiter=${encodeURIComponent(waiterId)}` : "";
   const [storeInfo, menu] = await Promise.all([
     getPublicStoreInfoByBrandSlug(brandSlug),
     getActiveMenuByBrandSlug(brandSlug),
   ]);
   const brandName = storeInfo?.brand_name?.trim() || formatBrandName(brandSlug);
   const logo = storeInfo?.image ?? null;
+  const socialLinks = [
+    {
+      key: "instagram",
+      label: "Instagram",
+      href: toPublicSocialUrl(storeInfo?.instagram),
+      icon: Instagram,
+    },
+    {
+      key: "facebook",
+      label: "Facebook",
+      href: toPublicSocialUrl(storeInfo?.facebook),
+      icon: Facebook,
+    },
+    {
+      key: "tiktok",
+      label: "TikTok",
+      href: toPublicSocialUrl(storeInfo?.tiktok),
+      icon: Music2,
+    },
+  ].filter((item): item is SocialLinkItem => Boolean(item.href));
 
   return (
     <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#1d3658_0%,#0f1c33_40%,#081426_100%)] px-4 py-6 md:py-10">
@@ -50,7 +98,7 @@ export default async function PublicStorePage({ params }: PublicStorePageProps) 
 
         <div className="mt-2 space-y-3">
           <Link
-            href={`/${brandSlug}/propina`}
+            href={`/${brandSlug}/propina${waiterQuery}`}
             className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#f0dfcb] bg-[#f0dfcb] px-4 text-base font-semibold text-[#17243b] transition hover:brightness-95"
           >
             <Wallet className="h-4 w-4" />
@@ -58,7 +106,7 @@ export default async function PublicStorePage({ params }: PublicStorePageProps) 
           </Link>
 
           <Link
-            href={`/${brandSlug}/resena`}
+            href={`/${brandSlug}/resena${waiterQuery}`}
             className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#f0dfcb] bg-[#f0dfcb] px-4 text-base font-semibold text-[#17243b] transition hover:brightness-95"
           >
             <Star className="h-4 w-4" />
@@ -88,6 +136,29 @@ export default async function PublicStorePage({ params }: PublicStorePageProps) 
               Menu
             </Link>
           )}
+
+          {socialLinks.length > 0 ? (
+            <div className="space-y-2 rounded-xl border border-white/20 bg-white/5 p-3">
+              <p className="text-xs uppercase tracking-[0.14em] text-white/70">Redes sociales</p>
+              <div className="grid gap-2">
+                {socialLinks.map((social) => {
+                  const Icon = social.icon;
+                  return (
+                    <a
+                      key={social.key}
+                      href={social.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/35 bg-transparent px-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                    >
+                      <Icon className="h-4 w-4" />
+                      {social.label}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <PublicStoreFooter />

@@ -1,7 +1,11 @@
 export const runtime = "nodejs";
 
 import { auth } from "@clerk/nextjs/server";
-import { getRatingConfigByClerkId, upsertRatingConfigByClerkId } from "@/app/lib/server/modules/rating-config/rating-config.service";
+import {
+  getRatingConfigByBrandSlug,
+  getRatingConfigByClerkId,
+  upsertRatingConfigByClerkId,
+} from "@/app/lib/server/modules/rating-config/rating-config.service";
 import { validateRatingConfig } from "@/app/validations";
 
 type RatingConfigPayload = {
@@ -13,14 +17,15 @@ function readFeatures(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string");
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const { userId } = await auth();
     if (!userId) {
       return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const config = await getRatingConfigByClerkId(userId);
+    const brandSlug = new URL(req.url).searchParams.get("brandSlug");
+    const config = brandSlug ? await getRatingConfigByBrandSlug(brandSlug) : await getRatingConfigByClerkId(userId);
     return Response.json({
       ok: true,
       features: config?.features ?? [],
@@ -40,6 +45,8 @@ export async function PATCH(req: Request) {
       return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const brandSlug = searchParams.get("brandSlug");
     const body = (await req.json()) as RatingConfigPayload;
     const validation = validateRatingConfig({
       features: readFeatures(body.features),
@@ -54,6 +61,7 @@ export async function PATCH(req: Request) {
 
     const updated = await upsertRatingConfigByClerkId({
       clerkUserId: userId,
+      brandSlug,
       features: validation.values.features,
     });
 

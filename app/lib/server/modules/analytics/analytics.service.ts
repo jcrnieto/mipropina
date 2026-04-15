@@ -1,6 +1,16 @@
-import { getRatingConfigByClerkId } from "@/app/lib/server/modules/rating-config/rating-config.service";
+import {
+  getOwnerByBrandSlug,
+  getPrimaryRestaurantByClerkId,
+} from "@/app/lib/server/modules/restaurants/restaurants.service";
+import {
+  getRatingConfigByBrandSlug,
+  getRatingConfigByClerkId,
+} from "@/app/lib/server/modules/rating-config/rating-config.service";
 import { supabaseRestRequest } from "@/app/lib/server/supabase/client";
-import { listEmployeesByClerkId } from "@/app/lib/server/modules/waiters/waiters.service";
+import {
+  listEmployeesByBrandSlug,
+  listEmployeesByClerkId,
+} from "@/app/lib/server/modules/waiters/waiters.service";
 
 type RatingSubmissionRow = {
   id: string;
@@ -9,6 +19,8 @@ type RatingSubmissionRow = {
   source: string | null;
   table_code: string | null;
   waiter_id: string | null;
+  waiter_service_stars: number | null;
+  entry_type: string | null;
   stars_1: number | null;
   stars_2: number | null;
   stars_3: number | null;
@@ -28,11 +40,12 @@ type DateRangeIso = {
 
 type StatsAccumulator = {
   total: number;
-  sumScore: number;
   positives: number;
   neutrals: number;
   negatives: number;
   withComment: number;
+  sumScore: number;
+  scored: number;
 };
 
 type WaiterAggregate = {
@@ -44,7 +57,7 @@ type WaiterAggregate = {
 };
 
 const RATING_SELECT =
-  "id,created_at,comment,source,table_code,waiter_id,stars_1,stars_2,stars_3,stars_4,stars_5";
+  "id,created_at,comment,source,table_code,waiter_id,waiter_service_stars,entry_type,stars_1,stars_2,stars_3,stars_4,stars_5";
 
 function formatDateRange(input: DateRangeInput): DateRangeIso {
   return {
@@ -63,9 +76,7 @@ function toFiniteNumber(input: unknown): number | null {
 }
 
 function getOverallScore(row: RatingSubmissionRow): number | null {
-  const stars = [row.stars_1, row.stars_2, row.stars_3, row.stars_4, row.stars_5]
-    .map((item) => toFiniteNumber(item))
-    .filter((item): item is number => item !== null);
+  const stars = getExperienceScores(row);
 
   if (stars.length === 0) {
     return null;
@@ -75,21 +86,60 @@ function getOverallScore(row: RatingSubmissionRow): number | null {
   return sum / stars.length;
 }
 
-async function listRatingSubmissionsByClerkId(input: {
-  clerkUserId: string;
+function getExperienceScores(row: RatingSubmissionRow): number[] {
+  return [
+    row.waiter_service_stars,
+    row.stars_1,
+    row.stars_2,
+    row.stars_3,
+    row.stars_4,
+    row.stars_5,
+  ]
+    .map((item) => toFiniteNumber(item))
+    .filter((item): item is number => item !== null);
+}
+
+function getLowestScore(row: RatingSubmissionRow): number | null {
+  const scores = getExperienceScores(row);
+  if (scores.length === 0) {
+    return null;
+  }
+
+  return Math.min(...scores);
+}
+
+function classifyExperience(row: RatingSubmissionRow): "positive" | "neutral" | "negative" | null {
+  const scores = getExperienceScores(row);
+  if (scores.length === 0) {
+    return null;
+  }
+
+  if (scores.some((score) => score <= 2)) {
+    return "negative";
+  }
+
+  if (scores.every((score) => score >= 4)) {
+    return "positive";
+  }
+
+  return "neutral";
+}
+
+async function listRatingSubmissionsByRestaurantId(input: {
+  restaurantId: string;
   range: DateRangeInput;
   limit?: number;
   offset?: number;
 }): Promise<RatingSubmissionRow[]> {
   const { fromIso, toIso } = formatDateRange(input.range);
-  const encodedAuthId = encodeURIComponent(input.clerkUserId);
+  const encodedRestaurantId = encodeURIComponent(input.restaurantId);
   const encodedFrom = encodeURIComponent(fromIso);
   const encodedTo = encodeURIComponent(toIso);
   const limitQuery = typeof input.limit === "number" ? `&limit=${input.limit}` : "";
   const offsetQuery = typeof input.offset === "number" ? `&offset=${input.offset}` : "";
 
   const response = await supabaseRestRequest(
-    `/rest/v1/rating_submission_mipropina?auth_user_id=eq.${encodedAuthId}&created_at=gte.${encodedFrom}&created_at=lt.${encodedTo}&select=${RATING_SELECT}&order=created_at.desc${limitQuery}${offsetQuery}`,
+    `/rest/v1/rating_submission_mipropina?restaurant_id=eq.${encodedRestaurantId}&created_at=gte.${encodedFrom}&created_at=lt.${encodedTo}&select=${RATING_SELECT}&order=created_at.desc${limitQuery}${offsetQuery}`,
     {
       method: "GET",
       headers: {
@@ -104,22 +154,28 @@ async function listRatingSubmissionsByClerkId(input: {
 function buildSummary(rows: RatingSubmissionRow[]) {
   const accumulator: StatsAccumulator = {
     total: rows.length,
-    sumScore: 0,
     positives: 0,
     neutrals: 0,
     negatives: 0,
     withComment: 0,
+    sumScore: 0,
+    scored: 0,
   };
 
-  let scored = 0;
   for (const row of rows) {
     const score = getOverallScore(row);
+    const classification = classifyExperience(row);
     if (score !== null) {
-      scored += 1;
+      accumulator.scored += 1;
       accumulator.sumScore += score;
-      if (score >= 4) accumulator.positives += 1;
-      else if (score >= 3) accumulator.neutrals += 1;
-      else accumulator.negatives += 1;
+    }
+
+    if (classification === "positive") {
+      accumulator.positives += 1;
+    } else if (classification === "negative") {
+      accumulator.negatives += 1;
+    } else if (classification === "neutral") {
+      accumulator.neutrals += 1;
     }
 
     if (row.comment && row.comment.trim().length > 0) {
@@ -127,11 +183,12 @@ function buildSummary(rows: RatingSubmissionRow[]) {
     }
   }
 
-  const divisor = scored > 0 ? scored : 1;
+  const divisor = rows.length > 0 ? rows.length : 1;
+  const scoreDivisor = accumulator.scored > 0 ? accumulator.scored : 1;
   const totalDivisor = rows.length > 0 ? rows.length : 1;
   return {
     totalExperiencias: rows.length,
-    promedioGeneral: Number((accumulator.sumScore / divisor).toFixed(2)),
+    promedioGeneral: Number((accumulator.sumScore / scoreDivisor).toFixed(2)),
     pctPositivas: Number(((accumulator.positives * 100) / divisor).toFixed(1)),
     pctNeutras: Number(((accumulator.neutrals * 100) / divisor).toFixed(1)),
     pctNegativas: Number(((accumulator.negatives * 100) / divisor).toFixed(1)),
@@ -144,7 +201,7 @@ function buildTrend(rows: RatingSubmissionRow[]) {
 
   for (const row of rows) {
     const day = row.created_at.slice(0, 10);
-    const score = getOverallScore(row);
+    const score = getLowestScore(row);
     const current = grouped.get(day) ?? { total: 0, sum: 0, scored: 0 };
     current.total += 1;
     if (score !== null) {
@@ -173,7 +230,7 @@ function buildDistribution(rows: RatingSubmissionRow[]) {
   ]);
 
   for (const row of rows) {
-    const score = getOverallScore(row);
+    const score = getLowestScore(row);
     if (score === null) continue;
     const rounded = Math.max(1, Math.min(5, Math.round(score)));
     buckets.set(rounded, (buckets.get(rounded) ?? 0) + 1);
@@ -214,15 +271,19 @@ function buildFeatureRanking(rows: RatingSubmissionRow[], features: string[]) {
     .sort((left, right) => left.promedio - right.promedio);
 }
 
-function buildWaiterRanking(rows: RatingSubmissionRow[], waiters: Array<{ id: string; firstName: string; lastName: string }>, minSamples: number) {
+function buildWaiterRanking(
+  rows: RatingSubmissionRow[],
+  waiters: Array<{ id: string; name: string | null; last_name: string | null }>,
+  minSamples: number,
+) {
   const byId = new Map<string, WaiterAggregate>();
   const waiterMap = new Map(
-    waiters.map((waiter) => [waiter.id, { name: waiter.firstName, lastName: waiter.lastName }]),
+    waiters.map((waiter) => [waiter.id, { name: waiter.name ?? "", lastName: waiter.last_name ?? "" }]),
   );
 
   for (const row of rows) {
     if (!row.waiter_id) continue;
-    const score = getOverallScore(row);
+    const score = toFiniteNumber(row.waiter_service_stars);
     if (score === null) continue;
 
     const waiterInfo = waiterMap.get(row.waiter_id) ?? { name: "", lastName: "" };
@@ -254,12 +315,15 @@ function buildWaiterRanking(rows: RatingSubmissionRow[], waiters: Array<{ id: st
 
 function buildExperiences(
   rows: RatingSubmissionRow[],
-  waiters: Array<{ id: string; firstName: string; lastName: string }>,
+  waiters: Array<{ id: string; name: string | null; last_name: string | null }>,
 ) {
   const waiterMap = new Map(waiters.map((waiter) => [waiter.id, waiter]));
 
   return rows.map((row) => {
     const waiter = row.waiter_id ? waiterMap.get(row.waiter_id) : undefined;
+    const waiterName = waiter ? [waiter.name, waiter.last_name].filter(Boolean).join(" ").trim() : "";
+    const lowestScore = getLowestScore(row);
+    const classification = classifyExperience(row);
     return {
       id: row.id,
       createdAt: row.created_at,
@@ -267,7 +331,11 @@ function buildExperiences(
       source: row.source ?? "qr",
       tableCode: row.table_code,
       waiterId: row.waiter_id,
-      waiterName: waiter ? `${waiter.firstName} ${waiter.lastName}`.trim() : null,
+      waiterName: waiterName || null,
+      waiterServiceScore: row.waiter_service_stars,
+      entryType: row.entry_type,
+      lowestScore,
+      experienceStatus: classification,
       stars1: row.stars_1,
       stars2: row.stars_2,
       stars3: row.stars_3,
@@ -278,12 +346,38 @@ function buildExperiences(
   });
 }
 
+async function resolveAnalyticsContext(input: { clerkUserId: string; brandSlug?: string | null }) {
+  if (input.brandSlug) {
+    const owner = await getOwnerByBrandSlug(input.brandSlug);
+    if (!owner?.restaurant_id) {
+      throw new Error("No se encontro el restaurante indicado para analytics.");
+    }
+
+    return {
+      restaurantId: owner.restaurant_id,
+      brandSlug: input.brandSlug,
+    };
+  }
+
+  const restaurant = await getPrimaryRestaurantByClerkId(input.clerkUserId);
+  if (!restaurant) {
+    throw new Error("No se encontro restaurante para analytics.");
+  }
+
+  return {
+    restaurantId: restaurant.id,
+    brandSlug: restaurant.slug,
+  };
+}
+
 export async function getAnalyticsSummaryByClerkId(input: {
   clerkUserId: string;
   range: DateRangeInput;
+  brandSlug?: string | null;
 }) {
-  const rows = await listRatingSubmissionsByClerkId({
-    clerkUserId: input.clerkUserId,
+  const context = await resolveAnalyticsContext(input);
+  const rows = await listRatingSubmissionsByRestaurantId({
+    restaurantId: context.restaurantId,
     range: input.range,
   });
   return buildSummary(rows);
@@ -292,9 +386,11 @@ export async function getAnalyticsSummaryByClerkId(input: {
 export async function getAnalyticsTrendByClerkId(input: {
   clerkUserId: string;
   range: DateRangeInput;
+  brandSlug?: string | null;
 }) {
-  const rows = await listRatingSubmissionsByClerkId({
-    clerkUserId: input.clerkUserId,
+  const context = await resolveAnalyticsContext(input);
+  const rows = await listRatingSubmissionsByRestaurantId({
+    restaurantId: context.restaurantId,
     range: input.range,
   });
   return buildTrend(rows);
@@ -303,9 +399,11 @@ export async function getAnalyticsTrendByClerkId(input: {
 export async function getAnalyticsDistributionByClerkId(input: {
   clerkUserId: string;
   range: DateRangeInput;
+  brandSlug?: string | null;
 }) {
-  const rows = await listRatingSubmissionsByClerkId({
-    clerkUserId: input.clerkUserId,
+  const context = await resolveAnalyticsContext(input);
+  const rows = await listRatingSubmissionsByRestaurantId({
+    restaurantId: context.restaurantId,
     range: input.range,
   });
   return buildDistribution(rows);
@@ -314,13 +412,15 @@ export async function getAnalyticsDistributionByClerkId(input: {
 export async function getAnalyticsFeatureRankingByClerkId(input: {
   clerkUserId: string;
   range: DateRangeInput;
+  brandSlug?: string | null;
 }) {
+  const context = await resolveAnalyticsContext(input);
   const [rows, config] = await Promise.all([
-    listRatingSubmissionsByClerkId({
-      clerkUserId: input.clerkUserId,
+    listRatingSubmissionsByRestaurantId({
+      restaurantId: context.restaurantId,
       range: input.range,
     }),
-    getRatingConfigByClerkId(input.clerkUserId),
+    input.brandSlug ? getRatingConfigByBrandSlug(input.brandSlug) : getRatingConfigByClerkId(input.clerkUserId),
   ]);
 
   return buildFeatureRanking(rows, config?.features ?? []);
@@ -330,13 +430,15 @@ export async function getAnalyticsWaiterRankingByClerkId(input: {
   clerkUserId: string;
   range: DateRangeInput;
   minSamples: number;
+  brandSlug?: string | null;
 }) {
+  const context = await resolveAnalyticsContext(input);
   const [rows, waiters] = await Promise.all([
-    listRatingSubmissionsByClerkId({
-      clerkUserId: input.clerkUserId,
+    listRatingSubmissionsByRestaurantId({
+      restaurantId: context.restaurantId,
       range: input.range,
     }),
-    listEmployeesByClerkId(input.clerkUserId),
+    input.brandSlug ? listEmployeesByBrandSlug(input.brandSlug) : listEmployeesByClerkId(input.clerkUserId),
   ]);
 
   return buildWaiterRanking(rows, waiters, input.minSamples);
@@ -347,15 +449,19 @@ export async function getAnalyticsExperiencesByClerkId(input: {
   range: DateRangeInput;
   limit: number;
   offset: number;
+  brandSlug?: string | null;
 }) {
   const pageSize = Math.max(1, input.limit);
-  const rows = await listRatingSubmissionsByClerkId({
-    clerkUserId: input.clerkUserId,
+  const context = await resolveAnalyticsContext(input);
+  const rows = await listRatingSubmissionsByRestaurantId({
+    restaurantId: context.restaurantId,
     range: input.range,
     limit: pageSize + 1,
     offset: input.offset,
   });
-  const waiters = await listEmployeesByClerkId(input.clerkUserId);
+  const waiters = input.brandSlug
+    ? await listEmployeesByBrandSlug(input.brandSlug)
+    : await listEmployeesByClerkId(input.clerkUserId);
 
   const hasMore = rows.length > pageSize;
   const slice = hasMore ? rows.slice(0, pageSize) : rows;

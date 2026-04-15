@@ -1,5 +1,5 @@
 import { listEmployeesByBrandSlug } from "@/app/lib/server/modules/waiters/waiters.service";
-import { getPublicStoreInfoByBrandSlug } from "@/app/lib/server/modules/personal-data/personal-data.service";
+import { getPublicStoreInfoByBrandSlug } from "@/app/lib/server/modules/restaurants/restaurants.service";
 import { getRatingFeaturesByBrandSlug } from "@/app/lib/server/modules/rating-config/rating-config.service";
 
 type RouteProps = {

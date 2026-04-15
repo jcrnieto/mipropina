@@ -1,7 +1,9 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest } from "next/server";
-import { buildAdminPath, buildStorePath } from "@/app/lib/brand";
-import { setPersonalDataImageByClerkId } from "@/app/lib/server/modules/personal-data/personal-data.service";
+import {
+  getPrimaryRestaurantImageByClerkId,
+  setRestaurantImageByClerkId,
+} from "@/app/lib/server/modules/restaurants/restaurants.service";
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "wappedidos";
 
@@ -95,15 +97,15 @@ export async function POST(req: NextRequest) {
     const normalizedName = normalizeFilename(file.name);
     const objectPath = `mipropina/${brandSlug}/${normalizedName}`;
 
-    console.log(`[onboarding-debug][${traceId}][admin.logo] upload starting`, {
-      userId,
-      brandSlug,
-      fileName: file.name,
-      contentType: file.type,
-      bytes: file.size,
-      bucket: STORAGE_BUCKET,
-      objectPath,
-    });
+    // console.log(`[onboarding-debug][${traceId}][admin.logo] upload starting`, {
+    //   userId,
+    //   brandSlug,
+    //   fileName: file.name,
+    //   contentType: file.type,
+    //   bytes: file.size,
+    //   bucket: STORAGE_BUCKET,
+    //   objectPath,
+    // });
 
     const { url, serviceRoleKey } = getSupabaseAdminEnv();
     const uploadResponse = await fetch(
@@ -128,21 +130,18 @@ export async function POST(req: NextRequest) {
     }
 
     const imageUrl = `${url}/storage/v1/object/public/${STORAGE_BUCKET}/${objectPath}`;
-    await setPersonalDataImageByClerkId({
+    await setRestaurantImageByClerkId({
       clerkUserId: userId,
       imageUrl,
       brandName,
-      adminPath: buildAdminPath(brandSlug),
-      storePath: buildStorePath(brandSlug),
-      debugTraceId: traceId,
-      debugSource: "admin.logo",
+      brandSlug,
     });
 
-    console.log(`[onboarding-debug][${traceId}][admin.logo] upload completed`, {
-      userId,
-      objectPath,
-      imageUrl,
-    });
+    // console.log(`[onboarding-debug][${traceId}][admin.logo] upload completed`, {
+    //   userId,
+    //   objectPath,
+    //   imageUrl,
+    // });
 
     return Response.json({
       ok: true,
@@ -168,32 +167,11 @@ export async function GET() {
       return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const { url, serviceRoleKey } = getSupabaseAdminEnv();
-    const encodedUserId = encodeURIComponent(userId);
-    const response = await fetch(
-      `${url}/rest/v1/personal_data_mipropina?auth_user_id=eq.${encodedUserId}&select=image&limit=1`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        cache: "no-store",
-      },
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Read current logo failed (${response.status}): ${errorText}`);
-    }
-
-    const rows = (await response.json()) as Array<{ image: string | null }>;
-    const imageUrl = rows[0]?.image ?? null;
-    console.log(`[onboarding-debug][${traceId}][admin.logo] current logo loaded`, {
-      userId,
-      hasImage: Boolean(imageUrl),
-    });
+    const imageUrl = await getPrimaryRestaurantImageByClerkId(userId);
+    // console.log(`[onboarding-debug][${traceId}][admin.logo] current logo loaded`, {
+    //   userId,
+    //   hasImage: Boolean(imageUrl),
+    // });
 
     return Response.json({ ok: true, imageUrl });
   } catch (error) {
@@ -204,4 +182,3 @@ export async function GET() {
     );
   }
 }
-

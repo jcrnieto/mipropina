@@ -10,7 +10,7 @@ type ApiResponse = {
   error?: string;
 };
 
-export function RatingConfigEditor() {
+export function RatingConfigEditor({ brandSlug }: { brandSlug: string }) {
   const [features, setFeatures] = useState<string[]>([""]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -22,7 +22,10 @@ export function RatingConfigEditor() {
 
     const loadConfig = async () => {
       try {
-        const response = await fetch("/api/admin/rating-config", { method: "GET", cache: "no-store" });
+        const response = await fetch(`/api/admin/rating-config?brandSlug=${encodeURIComponent(brandSlug)}`, {
+          method: "GET",
+          cache: "no-store",
+        });
         const json = (await response.json()) as ApiResponse;
 
         if (!response.ok || !json.ok) {
@@ -49,7 +52,7 @@ export function RatingConfigEditor() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [brandSlug]);
 
   const nonEmptyCount = useMemo(
     () => features.map((item) => item.trim()).filter((item) => item.length > 0).length,
@@ -76,7 +79,7 @@ export function RatingConfigEditor() {
     setSuccess(null);
 
     try {
-      const response = await fetch("/api/admin/rating-config", {
+      const scopedResponse = await fetch(`/api/admin/rating-config?brandSlug=${encodeURIComponent(brandSlug)}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -84,8 +87,8 @@ export function RatingConfigEditor() {
         body: JSON.stringify({ features }),
       });
 
-      const json = (await response.json()) as ApiResponse;
-      if (!response.ok || !json.ok) {
+      const json = (await scopedResponse.json()) as ApiResponse;
+      if (!scopedResponse.ok || !json.ok) {
         throw new Error(json.error || "No se pudo guardar la configuracion.");
       }
 

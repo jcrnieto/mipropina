@@ -11,6 +11,7 @@ export type EmployeeRow = {
 };
 
 export type EmployeeInsertPayload = {
+  restaurant_id: string;
   user_id: string;
   auth_user_id: string;
   name: string;
@@ -65,6 +66,61 @@ export async function listEmployeesByAuthUserId(authUserId: string): Promise<Emp
   return (await response.json()) as EmployeeRow[];
 }
 
+export async function listEmployeesByRestaurantId(restaurantId: string): Promise<EmployeeRow[]> {
+  const encodedRestaurantId = encodeURIComponent(restaurantId);
+  const response = await supabaseRestRequest(
+    `/rest/v1/employee_mipropina?restaurant_id=eq.${encodedRestaurantId}&select=${EMPLOYEE_SELECT}&order=created_at.desc`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  return (await response.json()) as EmployeeRow[];
+}
+
+export async function getEmployeeByAuthUserIdAndEmployeeId(
+  authUserId: string,
+  employeeId: string,
+): Promise<EmployeeRow | null> {
+  const encodedAuthId = encodeURIComponent(authUserId);
+  const encodedEmployeeId = encodeURIComponent(employeeId);
+  const response = await supabaseRestRequest(
+    `/rest/v1/employee_mipropina?id=eq.${encodedEmployeeId}&auth_user_id=eq.${encodedAuthId}&select=${EMPLOYEE_SELECT}&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  const rows = (await response.json()) as EmployeeRow[];
+  return rows[0] ?? null;
+}
+
+export async function getEmployeeByRestaurantIdAndEmployeeId(
+  restaurantId: string,
+  employeeId: string,
+): Promise<EmployeeRow | null> {
+  const encodedRestaurantId = encodeURIComponent(restaurantId);
+  const encodedEmployeeId = encodeURIComponent(employeeId);
+  const response = await supabaseRestRequest(
+    `/rest/v1/employee_mipropina?id=eq.${encodedEmployeeId}&restaurant_id=eq.${encodedRestaurantId}&select=${EMPLOYEE_SELECT}&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  const rows = (await response.json()) as EmployeeRow[];
+  return rows[0] ?? null;
+}
+
 export async function deleteEmployeeByAuthUserIdAndEmployeeId(
   authUserId: string,
   employeeId: string,
@@ -74,6 +130,24 @@ export async function deleteEmployeeByAuthUserIdAndEmployeeId(
 
   await supabaseRestRequest(
     `/rest/v1/employee_mipropina?id=eq.${encodedEmployeeId}&auth_user_id=eq.${encodedAuthId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Prefer: "return=minimal",
+      },
+    },
+  );
+}
+
+export async function deleteEmployeeByRestaurantIdAndEmployeeId(
+  restaurantId: string,
+  employeeId: string,
+): Promise<void> {
+  const encodedRestaurantId = encodeURIComponent(restaurantId);
+  const encodedEmployeeId = encodeURIComponent(employeeId);
+
+  await supabaseRestRequest(
+    `/rest/v1/employee_mipropina?id=eq.${encodedEmployeeId}&restaurant_id=eq.${encodedRestaurantId}`,
     {
       method: "DELETE",
       headers: {
@@ -106,6 +180,34 @@ export async function updateEmployeeByAuthUserIdAndEmployeeId(input: {
   const updatedRow = rows[0];
   if (!updatedRow) {
     throw new Error("Employee not found or not owned by current user");
+  }
+
+  return updatedRow;
+}
+
+export async function updateEmployeeByRestaurantIdAndEmployeeId(input: {
+  restaurantId: string;
+  employeeId: string;
+  payload: EmployeeUpdatePayload;
+}): Promise<EmployeeRow> {
+  const encodedRestaurantId = encodeURIComponent(input.restaurantId);
+  const encodedEmployeeId = encodeURIComponent(input.employeeId);
+
+  const response = await supabaseRestRequest(
+    `/rest/v1/employee_mipropina?id=eq.${encodedEmployeeId}&restaurant_id=eq.${encodedRestaurantId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(input.payload),
+    },
+  );
+
+  const rows = (await response.json()) as EmployeeRow[];
+  const updatedRow = rows[0];
+  if (!updatedRow) {
+    throw new Error("Employee not found or not owned by current restaurant");
   }
 
   return updatedRow;

@@ -1,13 +1,17 @@
 import {
   type AccountMipropinaPayload,
   type AccountMipropinaStatus,
+  getAccountByClerkId,
+  getAccountByBrandId,
   insertAccount,
   patchAccountByClerkId,
+  patchAccountByBrandId,
 } from "@/app/lib/server/modules/account/account.repository";
 import { getUsersMipropinaIdByClerkId } from "@/app/lib/server/modules/users/users.repository";
-import type { BillingStatus } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
+import type { BillingSnapshot, BillingStatus } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
 
 type AccountSnapshotInput = {
+  brandId: string;
   clerkUserId: string;
   billingStatus: BillingStatus;
   trialStartedAt?: string | null;
@@ -44,7 +48,7 @@ function mapBillingToAccountStatus(billingStatus: BillingStatus): AccountMipropi
   }
 }
 
-export async function upsertAccountSnapshotByClerkId(input: AccountSnapshotInput): Promise<void> {
+export async function upsertAccountSnapshotByBrandId(input: AccountSnapshotInput): Promise<void> {
   const usersMipropinaId = await getUsersMipropinaIdByClerkId(input.clerkUserId);
   if (!usersMipropinaId) {
     throw new Error("Cannot upsert account_mipropina without users_mipropina row");
@@ -52,6 +56,7 @@ export async function upsertAccountSnapshotByClerkId(input: AccountSnapshotInput
 
   const status = mapBillingToAccountStatus(input.billingStatus);
   const payload: AccountMipropinaPayload = {
+    brand_id: input.brandId,
     user_id: usersMipropinaId,
     auth_user_id: input.clerkUserId,
     status,
@@ -69,7 +74,7 @@ export async function upsertAccountSnapshotByClerkId(input: AccountSnapshotInput
     canceled_at: input.canceledAt ?? null,
   };
 
-  const patchedRows = await patchAccountByClerkId(input.clerkUserId, payload);
+  const patchedRows = await patchAccountByBrandId(input.brandId, payload);
   if (patchedRows.length > 0) {
     return;
   }
@@ -77,3 +82,73 @@ export async function upsertAccountSnapshotByClerkId(input: AccountSnapshotInput
   await insertAccount(payload);
 }
 
+function mapAccountStatusToBillingStatus(status: AccountMipropinaStatus): BillingStatus {
+  switch (status) {
+    case "trial_active":
+      return "trial_active";
+    case "trial_expired":
+      return "trial_expired";
+    case "active":
+      return "subscription_active";
+    case "past_due":
+      return "subscription_paused";
+    case "canceled":
+      return "subscription_cancelled";
+    case "incomplete":
+    default:
+      return "subscription_pending";
+  }
+}
+
+function mapAccountToBillingSnapshot(account: {
+  status: AccountMipropinaStatus;
+  trial_start?: string | null;
+  trial_end?: string | null;
+  mp_preapproval_id?: string | null;
+  mp_preapproval_status?: string | null;
+}): BillingSnapshot {
+  const status = mapAccountStatusToBillingStatus(account.status);
+  return {
+    mode: status === "trial_active" || status === "trial_expired" ? "trial" : "subscription",
+    status,
+    trialDays: null,
+    trialStartedAt: account.trial_start ?? null,
+    trialEndsAt: account.trial_end ?? null,
+    mercadopagoPreapprovalId: account.mp_preapproval_id ?? null,
+    mercadopagoPreapprovalStatus: account.mp_preapproval_status ?? null,
+  };
+}
+
+export async function getBillingSnapshotByBrandId(
+  brandId: string,
+  clerkUserId?: string | null,
+): Promise<BillingSnapshot> {
+  let account = await getAccountByBrandId(brandId);
+
+  if (!account && clerkUserId) {
+    const legacyAccount = await getAccountByClerkId(clerkUserId);
+    if (legacyAccount) {
+      await patchAccountByClerkId(clerkUserId, {
+        brand_id: brandId,
+      });
+      account = {
+        ...legacyAccount,
+        brand_id: brandId,
+      };
+    }
+  }
+
+  if (!account) {
+    return {
+      mode: null,
+      status: "none",
+      trialDays: null,
+      trialStartedAt: null,
+      trialEndsAt: null,
+      mercadopagoPreapprovalId: null,
+      mercadopagoPreapprovalStatus: null,
+    };
+  }
+
+  return mapAccountToBillingSnapshot(account);
+}

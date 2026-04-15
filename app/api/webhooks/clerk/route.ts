@@ -40,9 +40,9 @@ export async function POST(req: NextRequest) {
   try {
     const traceId = crypto.randomUUID();
     const event = (await verifyWebhook(req)) as WebhookEvent;
-    console.log(`[onboarding-debug][${traceId}][webhook.clerk] event received`, {
-      type: event.type,
-    });
+    // console.log(`[onboarding-debug][${traceId}][webhook.clerk] event received`, {
+    //   type: event.type,
+    // });
 
     if (event.type === "user.created" || event.type === "user.updated") {
       const user = event.data as ClerkWebhookUser;
@@ -53,10 +53,10 @@ export async function POST(req: NextRequest) {
       const lastName = metadataLastName ?? user.last_name ?? null;
       const rebuiltFullName = [firstName, lastName].filter(Boolean).join(" ").trim();
       const fullName = readString(metadata, "fullName") ?? (rebuiltFullName || null);
-      console.log(`[onboarding-debug][${traceId}][webhook.clerk] user payload`, {
-        userId: user.id,
-        onboardingComplete: metadata.onboardingComplete === true,
-      });
+      // console.log(`[onboarding-debug][${traceId}][webhook.clerk] user payload`, {
+      //   userId: user.id,
+      //   onboardingComplete: metadata.onboardingComplete === true,
+      // });
 
       await upsertAppUser({
         clerkUserId: user.id,

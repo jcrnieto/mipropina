@@ -1,10 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { Trash2, UsersRound } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, Copy, Download, Trash2, UsersRound } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { Waiter } from "./waiters.types";
 
 type WaitersListProps = {
+  brandSlug: string;
   waiters: Waiter[];
   isLoading: boolean;
   error: string | null;
@@ -14,6 +17,7 @@ type WaitersListProps = {
 };
 
 export function WaitersList({
+  brandSlug,
   waiters,
   isLoading,
   error,
@@ -21,6 +25,34 @@ export function WaitersList({
   onDelete,
   onEdit,
 }: WaitersListProps) {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const publicBaseUrl = useMemo(() => {
+    const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    return base.replace(/\/+$/, "");
+  }, []);
+
+  const buildWaiterUrl = (waiterId: string) =>
+    `${publicBaseUrl}/${brandSlug}?waiter=${encodeURIComponent(waiterId)}`;
+
+  const copyWaiterLink = async (waiterId: string) => {
+    await navigator.clipboard.writeText(buildWaiterUrl(waiterId));
+    setCopiedId(waiterId);
+    window.setTimeout(() => {
+      setCopiedId((current) => (current === waiterId ? null : current));
+    }, 1200);
+  };
+
+  const downloadWaiterQr = (waiterId: string) => {
+    const canvas = document.getElementById(`waiter-qr-${waiterId}`) as HTMLCanvasElement | null;
+    if (!canvas) return;
+
+    const pngUrl = canvas.toDataURL("image/png");
+    const anchor = document.createElement("a");
+    anchor.href = pngUrl;
+    anchor.download = `qr-mozo-${waiterId}.png`;
+    anchor.click();
+  };
+
   return (
     <section className="rounded-2xl border border-[#d8e0ef] bg-white p-6 shadow-[0_10px_25px_rgba(30,48,90,0.08)]">
       <div className="flex items-start justify-between">
@@ -51,7 +83,7 @@ export function WaitersList({
         <div className="mt-6 space-y-3">
           {waiters.map((waiter) => (
             <article key={waiter.id} className="rounded-xl border border-[#d8e0ef] bg-[#f9fbff] p-4">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex items-start gap-3">
                   <div className="relative h-12 w-12 overflow-hidden rounded-full bg-[#edf2fd]">
                     {waiter.photo ? (
@@ -82,26 +114,62 @@ export function WaitersList({
                     >
                       Abrir link de Mercado Pago
                     </a>
+                    <p className="max-w-xl break-all text-xs text-[#607193]">{buildWaiterUrl(waiter.id)}</p>
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    disabled={deletingId === waiter.id}
-                    onClick={() => onDelete(waiter.id)}
-                    className="inline-flex items-center gap-1 rounded-md border border-[#d6dfef] bg-white px-2 py-1 text-xs text-[#607193] hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    {deletingId === waiter.id ? "Eliminando..." : "Eliminar"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={deletingId === waiter.id}
-                    onClick={() => onEdit(waiter)}
-                    className="inline-flex items-center justify-center rounded-md border border-[#d6dfef] bg-white px-2 py-1 text-xs text-[#607193] hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Editar
-                  </button>
+
+                <div className="flex flex-col gap-3 lg:items-end">
+                  <div className="flex items-center gap-3 rounded-2xl border border-[#d8e0ef] bg-white px-3 py-3">
+                    <div className="rounded-xl border border-[#e4ebf7] bg-white p-2">
+                      <QRCodeCanvas
+                        id={`waiter-qr-${waiter.id}`}
+                        value={buildWaiterUrl(waiter.id)}
+                        size={88}
+                        level="M"
+                        includeMargin
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void copyWaiterLink(waiter.id);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-[#d6dfef] bg-white px-2 py-1 text-xs text-[#607193] hover:bg-[#eef3ff]"
+                      >
+                        {copiedId === waiter.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        {copiedId === waiter.id ? "Copiado" : "Copiar link"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadWaiterQr(waiter.id)}
+                        className="inline-flex items-center gap-1 rounded-md border border-[#d6dfef] bg-white px-2 py-1 text-xs text-[#607193] hover:bg-[#eef3ff]"
+                      >
+                        <Download className="h-3 w-3" />
+                        Descargar QR
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      disabled={deletingId === waiter.id}
+                      onClick={() => onDelete(waiter.id)}
+                      className="inline-flex items-center gap-1 rounded-md border border-[#d6dfef] bg-white px-2 py-1 text-xs text-[#607193] hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {deletingId === waiter.id ? "Eliminando..." : "Eliminar"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deletingId === waiter.id}
+                      onClick={() => onEdit(waiter)}
+                      className="inline-flex items-center justify-center rounded-md border border-[#d6dfef] bg-white px-2 py-1 text-xs text-[#607193] hover:bg-[#eef3ff] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Editar
+                    </button>
+                  </div>
                 </div>
               </div>
             </article>
@@ -111,4 +179,3 @@ export function WaitersList({
     </section>
   );
 }
-

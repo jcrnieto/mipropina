@@ -13,12 +13,14 @@ export async function GET(req: Request) {
     const range = resolveAnalyticsDateRange(searchParams);
     const limit = readPositiveInt(searchParams, "limit", 20, 200);
     const offset = readPositiveInt(searchParams, "offset", 0, 10000);
+    const brandSlug = searchParams.get("brandSlug");
 
     const experiences = await getAnalyticsExperiencesByClerkId({
       clerkUserId: userId,
       range,
       limit,
       offset,
+      brandSlug,
     });
 
     return Response.json({ ok: true, ...experiences, range });

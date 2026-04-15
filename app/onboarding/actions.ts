@@ -2,9 +2,10 @@
 
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { buildAdminPath, buildStorePath, slugifyBrand } from "../lib/brand";
 import { upsertAppUser } from "@/app/lib/server/modules/users/users.service";
-import { upsertAccountSnapshotByClerkId } from "@/app/lib/server/modules/account/account.service";
+import { upsertBrandByClerkId } from "@/app/lib/server/modules/brands/brands.service";
+import { upsertAccountSnapshotByBrandId } from "@/app/lib/server/modules/account/account.service";
+import { upsertOnboardingRestaurantByClerkId } from "@/app/lib/server/modules/restaurants/restaurants.service";
 import {
   computeTrialWindow,
   createMercadoPagoSubscriptionCheckout,
@@ -51,27 +52,23 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
   const trialDays = parseTrialDays(formData.get("trialDays"));
 
   const validation = validateOnboardingForm({
-    firstName: String(formData.get("firstName") ?? ""),
-    lastName: String(formData.get("lastName") ?? ""),
-    phone: String(formData.get("phone") ?? ""),
-    address: String(formData.get("address") ?? ""),
     brandName: String(formData.get("brandName") ?? ""),
+    brandSlug: String(formData.get("brandSlug") ?? ""),
+    restaurantName: String(formData.get("restaurantName") ?? ""),
+    restaurantSlug: String(formData.get("restaurantSlug") ?? ""),
   });
 
   if (!validation.isValid) {
     redirect(`/onboarding?plan=${billingMode}&trialDays=${trialDays}&error=validation`);
   }
 
-  const { firstName, lastName, phone, address, brandName } = validation.values;
-  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
-  const brandSlug = slugifyBrand(brandName);
-
-  if (!brandSlug) {
+  const { brandName, brandSlug, restaurantName, restaurantSlug } = validation.values;
+  if (!brandSlug || !restaurantSlug) {
     redirect(`/onboarding?plan=${billingMode}&trialDays=${trialDays}&error=brand-slug`);
   }
 
-  const adminPath = buildAdminPath(brandSlug);
-  const storePath = buildStorePath(brandSlug);
+  const adminPath = "/admin";
+  const storePath = `/${restaurantSlug}`;
   const client = await clerkClient();
   const clerkUser = await client.users.getUser(userId);
   const primaryEmail =
@@ -82,22 +79,56 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
 
   const baseMetadata = {
     onboardingComplete: true,
-    firstName,
-    lastName,
-    fullName,
-    phone,
-    address,
     brandName,
-    brandSlug,
+    brandSlug: restaurantSlug,
+    brandAccountSlug: brandSlug,
+    restaurantName,
     adminPath,
     storePath,
   };
+
+  await upsertAppUser({
+    clerkUserId: userId,
+    email: primaryEmail,
+    brandName,
+    brandSlug: restaurantSlug,
+    adminPath,
+    storePath,
+    onboardingComplete: true,
+    debugTraceId: traceId,
+    debugSource: "onboarding.submit.base",
+  });
+
+  let brandId: string;
+  try {
+    const brand = await upsertBrandByClerkId({
+      clerkUserId: userId,
+      name: brandName,
+      slug: brandSlug,
+      adminPath,
+      publicPath: null,
+      onboardingCompleted: true,
+    });
+
+    brandId = brand.id;
+    await upsertOnboardingRestaurantByClerkId({
+      clerkUserId: userId,
+      brandId,
+      brandName,
+      branchName: restaurantName,
+      slug: restaurantSlug,
+    });
+  } catch (error) {
+    console.error("[onboarding] failed to persist brand/restaurant", error);
+    redirect(`/onboarding?plan=${billingMode}&trialDays=${trialDays}&error=brand-slug`);
+  }
 
   if (billingMode === "trial") {
     const trialWindow = computeTrialWindow(trialDays);
     await client.users.updateUserMetadata(userId, {
       publicMetadata: {
         ...baseMetadata,
+        brandId,
         billingMode: "trial",
         billingStatus: "trial_active",
         trialDays,
@@ -108,24 +139,8 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
       },
     });
 
-    await upsertAppUser({
-      clerkUserId: userId,
-      email: primaryEmail,
-      firstName,
-      lastName,
-      fullName,
-      phone,
-      address,
-      brandName,
-      brandSlug,
-      adminPath,
-      storePath,
-      onboardingComplete: true,
-      debugTraceId: traceId,
-      debugSource: "onboarding.submit.trial",
-    });
-
-    await upsertAccountSnapshotByClerkId({
+    await upsertAccountSnapshotByBrandId({
+      brandId,
       clerkUserId: userId,
       billingStatus: "trial_active",
       trialStartedAt: trialWindow.startedAtIso,
@@ -135,7 +150,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
       canceledAt: null,
     });
 
-    redirect(adminPath);
+    redirect("/admin");
   }
 
   if (!primaryEmail) {
@@ -145,7 +160,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
   let checkout: Awaited<ReturnType<typeof createMercadoPagoSubscriptionCheckout>>;
   try {
     checkout = await createMercadoPagoSubscriptionCheckout({
-      clerkUserId: userId,
+      brandId,
       payerEmail: primaryEmail,
       reason: `Suscripcion MiPropina - ${brandName}`,
       amount: getSubscriptionAmount(),
@@ -161,6 +176,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
     await client.users.updateUserMetadata(userId, {
       publicMetadata: {
         ...baseMetadata,
+        brandId,
         billingMode: "subscription",
         billingStatus: "subscription_pending",
         trialDays: null,
@@ -170,25 +186,8 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
         mercadopagoPreapprovalStatus: checkout.status,
       },
     });
-
-    await upsertAppUser({
-      clerkUserId: userId,
-      email: primaryEmail,
-      firstName,
-      lastName,
-      fullName,
-      phone,
-      address,
-      brandName,
-      brandSlug,
-      adminPath,
-      storePath,
-      onboardingComplete: true,
-      debugTraceId: traceId,
-      debugSource: "onboarding.submit.subscription",
-    });
-
-    await upsertAccountSnapshotByClerkId({
+    await upsertAccountSnapshotByBrandId({
+      brandId,
       clerkUserId: userId,
       billingStatus: "subscription_pending",
       trialStartedAt: null,

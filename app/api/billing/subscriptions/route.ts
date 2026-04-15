@@ -1,5 +1,5 @@
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
-import { upsertAccountSnapshotByClerkId } from "@/app/lib/server/modules/account/account.service";
+import { upsertAccountSnapshotByBrandId } from "@/app/lib/server/modules/account/account.service";
 import { createMercadoPagoSubscriptionCheckout } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
 
 function readMetadataString(metadata: Record<string, unknown>, key: string): string | null {
@@ -32,17 +32,18 @@ export async function POST() {
     const metadata = (user.publicMetadata ?? {}) as Record<string, unknown>;
     const brandName = readMetadataString(metadata, "brandName");
     const brandSlug = readMetadataString(metadata, "brandSlug");
+    const brandId = readMetadataString(metadata, "brandId");
     const primaryEmail =
       user.emailAddresses.find((email) => email.id === user.primaryEmailAddressId)?.emailAddress ??
       user.emailAddresses[0]?.emailAddress ??
       null;
 
-    if (!brandName || !primaryEmail) {
+    if (!brandName || !brandId || !primaryEmail) {
       return Response.json({ ok: false, error: "Faltan datos para iniciar la suscripcion." }, { status: 400 });
     }
 
     const checkout = await createMercadoPagoSubscriptionCheckout({
-      clerkUserId: userId,
+      brandId,
       payerEmail: primaryEmail,
       reason: `Suscripcion MiPropina - ${brandName}`,
       amount: getSubscriptionAmount(),
@@ -61,7 +62,8 @@ export async function POST() {
         },
       });
 
-      await upsertAccountSnapshotByClerkId({
+      await upsertAccountSnapshotByBrandId({
+        brandId,
         clerkUserId: userId,
         billingStatus: "subscription_pending",
         trialStartedAt: null,

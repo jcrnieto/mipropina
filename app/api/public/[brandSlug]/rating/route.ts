@@ -2,6 +2,12 @@ import {
   createRatingSubmissionByBrandSlug,
   getRatingFeaturesByBrandSlug,
 } from "@/app/lib/server/modules/rating-config/rating-config.service";
+import { getPublicStoreInfoByBrandSlug } from "@/app/lib/server/modules/restaurants/restaurants.service";
+import { getEmployeeByBrandSlugAndId } from "@/app/lib/server/modules/waiters/waiters.service";
+import {
+  sendWhatsAppLowRatingAlert,
+  shouldNotifyLowRating,
+} from "@/app/lib/server/modules/notifications/whatsapp.service";
 
 type RouteProps = {
   params: Promise<{ brandSlug: string }>;
@@ -10,6 +16,8 @@ type RouteProps = {
 type RatingPayload = {
   stars?: unknown;
   comment?: unknown;
+  waiterId?: unknown;
+  waiterServiceStars?: unknown;
 };
 
 function readStars(value: unknown): number[] {
@@ -25,6 +33,20 @@ function readComment(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function readOptionalString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function readOptionalStar(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 5) {
+    return null;
+  }
+  return parsed;
+}
+
 export async function POST(req: Request, { params }: RouteProps) {
   try {
     const { brandSlug } = await params;
@@ -34,9 +56,13 @@ export async function POST(req: Request, { params }: RouteProps) {
 
     const body = (await req.json()) as RatingPayload;
     const starsInput = readStars(body.stars);
+    const comment = readComment(body.comment);
+    const waiterId = readOptionalString(body.waiterId);
+    const waiterServiceStars = readOptionalStar(body.waiterServiceStars);
     const configuredFeatures = await getRatingFeaturesByBrandSlug(brandSlug);
+    const hasWaiterContext = Boolean(waiterId);
 
-    if (configuredFeatures.length === 0) {
+    if (configuredFeatures.length === 0 && !hasWaiterContext) {
       return Response.json(
         { ok: false, error: "Este restaurante no tiene caracteristicas para calificar." },
         { status: 400 },
@@ -58,6 +84,20 @@ export async function POST(req: Request, { params }: RouteProps) {
       );
     }
 
+    if (hasWaiterContext) {
+      const waiter = await getEmployeeByBrandSlugAndId(brandSlug, waiterId!);
+      if (!waiter) {
+        return Response.json({ ok: false, error: "El mozo indicado no pertenece a este restaurante." }, { status: 400 });
+      }
+
+      if (waiterServiceStars === null) {
+        return Response.json(
+          { ok: false, error: "Debes puntuar la atencion del mozo para este QR." },
+          { status: 400 },
+        );
+      }
+    }
+
     const normalizedStars: Array<number | null> = [null, null, null, null, null];
     starsInput.forEach((value, index) => {
       if (index < normalizedStars.length) {
@@ -68,8 +108,33 @@ export async function POST(req: Request, { params }: RouteProps) {
     await createRatingSubmissionByBrandSlug({
       brandSlug,
       stars: normalizedStars,
-      comment: readComment(body.comment),
+      comment,
+      waiterId,
+      waiterServiceStars,
+      entryType: hasWaiterContext ? "waiter_qr" : "general",
     });
+
+    const shouldNotify = starsInput.length > 0 && shouldNotifyLowRating(starsInput);
+    if (shouldNotify) {
+      try {
+        const storeInfo = await getPublicStoreInfoByBrandSlug(brandSlug);
+        const ownerPhone = storeInfo?.phone?.trim() || "";
+        if (ownerPhone) {
+          const averageStars = starsInput.reduce((sum, item) => sum + item, 0) / starsInput.length;
+          const lowestStars = Math.min(...starsInput);
+          await sendWhatsAppLowRatingAlert({
+            ownerPhone,
+            brandName: storeInfo?.brand_name?.trim() || brandSlug,
+            brandSlug,
+            averageStars,
+            lowestStars,
+            comment,
+          });
+        }
+      } catch (notificationError) {
+        console.error("[rating-alert][whatsapp] notification failed", notificationError);
+      }
+    }
 
     return Response.json({ ok: true });
   } catch (error) {

@@ -1,8 +1,8 @@
-export type { SetPersonalDataImageInput } from "@/app/lib/server/modules/personal-data/personal-data.service";
+export type { SetRestaurantImageInput as SetPersonalDataImageInput } from "@/app/lib/server/modules/restaurants/restaurants.service";
 export {
   getPublicStoreInfoByBrandSlug,
-  setPersonalDataImageByClerkId,
-} from "@/app/lib/server/modules/personal-data/personal-data.service";
+  setRestaurantImageByClerkId as setPersonalDataImageByClerkId,
+} from "@/app/lib/server/modules/restaurants/restaurants.service";
 
 export {
   createRatingSubmissionByBrandSlug,

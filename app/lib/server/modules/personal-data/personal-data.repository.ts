@@ -7,6 +7,9 @@ export type PersonalDataInsertPayload = {
   last_name: string | null;
   phone: string | null;
   address: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  tiktok: string | null;
   city: string | null;
   brand_name: string | null;
   public_url: string | null;
@@ -28,6 +31,9 @@ export type PublicStoreInfoRow = {
   phone: string | null;
   address: string | null;
   image: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  tiktok: string | null;
 };
 
 export async function patchPersonalDataByClerkId(
@@ -86,7 +92,7 @@ export async function getPublicStoreInfoRowByBrandSlug(
   const encodedPublicUrl = encodeURIComponent(publicUrl);
 
   const response = await supabaseRestRequest(
-    `/rest/v1/personal_data_mipropina?public_url=eq.${encodedPublicUrl}&select=brand_name,phone,address,image&limit=1`,
+    `/rest/v1/personal_data_mipropina?public_url=eq.${encodedPublicUrl}&select=brand_name,phone,address,image,instagram,facebook,tiktok&limit=1`,
     {
       method: "GET",
       headers: {

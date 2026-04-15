@@ -78,6 +78,7 @@ async function handleDeleteUser(req: Request, allowQueryParam: boolean) {
       "employee_mipropina",
       "rating_config_mipropina",
       "menu_mipropina",
+      "restaurants_mipropina",
       "account_mipropina",
       "personal_data_mipropina",
       "users_mipropina",
