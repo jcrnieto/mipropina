@@ -59,12 +59,16 @@ export function InstallAppCard() {
       setIsStandalone(isStandaloneMode());
       setNotificationPermission("Notification" in window ? window.Notification.permission : "unsupported");
     };
+    const legacyMediaQuery = mediaQuery as MediaQueryList & {
+      addListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+      removeListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+    };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     if ("addEventListener" in mediaQuery) {
       mediaQuery.addEventListener("change", handleDisplayModeChange);
-    } else {
-      mediaQuery.addListener(handleDisplayModeChange);
+    } else if (legacyMediaQuery.addListener) {
+      legacyMediaQuery.addListener(handleDisplayModeChange);
     }
     window.addEventListener("appinstalled", handleDisplayModeChange);
 
@@ -72,8 +76,8 @@ export function InstallAppCard() {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       if ("removeEventListener" in mediaQuery) {
         mediaQuery.removeEventListener("change", handleDisplayModeChange);
-      } else {
-        mediaQuery.removeListener(handleDisplayModeChange);
+      } else if (legacyMediaQuery.removeListener) {
+        legacyMediaQuery.removeListener(handleDisplayModeChange);
       }
       window.removeEventListener("appinstalled", handleDisplayModeChange);
     };
