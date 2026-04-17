@@ -2,29 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Script from "next/script";
-
-type OneSignalPromptOptions = {
-  force?: boolean;
-};
-
-type OneSignalInstance = {
-  init: (options: Record<string, unknown>) => Promise<void>;
-  login: (externalId: string) => Promise<void>;
-  Slidedown: {
-    promptPush: (options?: OneSignalPromptOptions) => Promise<void>;
-  };
-  Notifications: {
-    permission: boolean;
-    isPushSupported: () => boolean;
-  };
-};
-
-declare global {
-  interface Window {
-    OneSignal?: OneSignalInstance;
-    OneSignalDeferred?: Array<(oneSignal: OneSignalInstance) => void | Promise<void>>;
-  }
-}
+import type { OneSignalInstance } from "@/app/components/admin/onesignal.types";
 
 const appId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
 

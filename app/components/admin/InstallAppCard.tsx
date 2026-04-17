@@ -10,26 +10,12 @@ import {
   Share2,
   Smartphone,
 } from "lucide-react";
+import type { OneSignalInstance } from "@/app/components/admin/onesignal.types";
 
 type DeferredInstallPrompt = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
-
-type OneSignalInstance = {
-  Slidedown: {
-    promptPush: (options?: { force?: boolean }) => Promise<void>;
-  };
-  Notifications: {
-    isPushSupported: () => boolean;
-  };
-};
-
-declare global {
-  interface Window {
-    OneSignalDeferred?: Array<(oneSignal: OneSignalInstance) => void | Promise<void>>;
-  }
-}
 
 function isStandaloneMode() {
   if (typeof window === "undefined") return false;
