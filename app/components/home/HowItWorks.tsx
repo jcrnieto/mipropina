@@ -18,7 +18,7 @@ const steps = [
     step: "02",
     title: "Generá el QR",
     description:
-      "Se genera un QR único para cada mesa que apunta a mipropina.app/tu-local. Imprimilo y listo.",
+      "Se genera un QR único para cada mesa que apunta a satix.app/tu-local. Imprimilo y listo.",
     color: "gradient-secondary",
     shadow: "shadow-secondary/20",
   },
@@ -115,7 +115,7 @@ export default HowItWorks;
 //     icon: QrCode,
 //     step: "02",
 //     title: "Generá el QR",
-//     description: "Se genera un QR único para cada mesa que apunta a mipropina.app/tu-restaurante. Imprimilo y listo.",
+//     description: "Se genera un QR único para cada mesa que apunta a satix.app/tu-restaurante. Imprimilo y listo.",
 //     color: "gradient-secondary",
 //     shadow: "shadow-secondary/20",
 //   },

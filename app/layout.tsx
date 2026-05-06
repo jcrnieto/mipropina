@@ -15,17 +15,17 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "MiPropina | Propinas digitales para restaurantes",
-    template: "%s | MiPropina",
+    default: "Satix | Propinas digitales para restaurantes",
+    template: "%s | Satix",
   },
   description:
     "Recibi propinas digitales con QR y Mercado Pago para tus mozos, sin efectivo y sin friccion.",
-  applicationName: "MiPropina",
+  applicationName: "Satix",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "MiPropina",
+    title: "Satix",
   },
   icons: {
     icon: "/icon?size=192",

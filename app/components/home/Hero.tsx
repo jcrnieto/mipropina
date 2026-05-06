@@ -75,7 +75,7 @@ const Hero = () => {
                 {/* Status bar */}
                 <div className="px-4 pt-3 pb-2 flex justify-between items-center">
                   <span className="text-xs font-semibold text-muted-foreground">
-                    mipropina.app
+                    satix.app
                   </span>
                   <QrCode size={14} className="text-muted-foreground" />
                 </div>
@@ -225,7 +225,7 @@ export default Hero;
 //               <div className="w-full h-full rounded-[2rem] bg-muted overflow-hidden flex flex-col">
 //                 {/* Status bar */}
 //                 <div className="px-4 pt-3 pb-2 flex justify-between items-center">
-//                   <span className="text-xs font-semibold text-muted-foreground">mipropina.app</span>
+//                   <span className="text-xs font-semibold text-muted-foreground">satix.app</span>
 //                   <QrCode size={14} className="text-muted-foreground" />
 //                 </div>
 //                 {/* Content */}

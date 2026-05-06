@@ -19,7 +19,7 @@ function NavbarAdmin({ brandSlug, brandName }: NavbarAdminProps) {
             </div>
 
             <div className="leading-tight">
-              <p className="font-display text-xl font-bold text-[#0f1b35]">Tablero MiPropina</p>
+              <p className="font-display text-xl font-bold text-[#0f1b35]">Tablero Satix</p>
               <p className="text-sm text-[#536282]">{displayName}</p>
             </div>
           </div>

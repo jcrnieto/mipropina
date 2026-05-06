@@ -6,7 +6,7 @@ export function PublicStoreFooter() {
       <p className="text-sm text-[#415170] md:text-base">
         Vos tambien queres tu app de propinas?
         <Link href="/" className="ml-1 font-semibold text-[#2f66dc] transition-colors hover:text-[#244fb1]">
-          mipropina.app
+          satix.app
         </Link>
       </p>
     </footer>
