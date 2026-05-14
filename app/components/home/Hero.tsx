@@ -24,17 +24,16 @@ const Hero = () => {
             🚀 7 días gratis · Sin tarjeta
           </span>
 
-          <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6">
-            Medí y mejorá la{" "}
-            <span className="gradient-text">experiencia</span>
-            {" "}en tu local
+          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
+            Detectá clientes insatisfechos antes de que se conviertan en{" "}
+            <span className="gradient-text">malas reseñas</span>
+            {" "}
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-lg mb-8 leading-relaxed">
-            Tus clientes escanean un QR y califican limpieza, atención, tiempos de espera,
-            relación costo-calidad y más. Vos recibís feedback en tiempo real y, si quieren,
-            también pueden dejar{" "}
-            <strong className="text-foreground">propina por Mercado Pago</strong>.
+            Con un QR en cada mesa, tus clientes califican su experiencia en menos de 10 segundos. 
+            Si algo sale mal, recibís una alerta instantánea para resolverlo antes de que se vayan.{" "}
+            {/* <strong className="text-foreground">propina por Mercado Pago</strong>. */}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4">
@@ -43,7 +42,7 @@ const Hero = () => {
                 size="lg"
                 className="gradient-primary text-primary-foreground shadow-xl shadow-primary/30 hover:shadow-primary/50 transition-all text-base px-8 h-12"
               >
-                Probá gratis 7 días
+                Probar gratis 7 días
                 <ArrowRight className="ml-2" size={18} />
               </Button>
             </Link>
@@ -87,7 +86,7 @@ const Hero = () => {
                       🍽️ La Parrilla de Juan
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Calificá tu experiencia
+                      ¿Cómo va tu experiencia?
                     </p>
                   </div>
 
@@ -118,7 +117,7 @@ const Hero = () => {
                             i === 0 ? "text-primary-foreground/70" : "text-muted-foreground"
                           }`}
                         >
-                          Tocá para puntuar
+                          Avisale directo al encargado
                         </p>
                       </div>
                       <ArrowRight size={14} />

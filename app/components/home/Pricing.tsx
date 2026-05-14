@@ -6,11 +6,13 @@ import { Check, ArrowRight, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
 const features = [
-  "QR personalizado",
-  "Dashboard de metricas y feedback",
-  "Configuracion de aspectos a evaluar",
-  "Integracion con Mercado Pago (propinas)",
-  "Soporte por email",
+  "QR listo para imprimir por restaurante",
+  "Alertas por baja calificación",
+  "Notificaciones al celular y por email",
+  "Panel con calificaciones, comentarios y horarios",
+  "Preguntas configurables por local",
+  "Propinas digitales opcionales",
+  "Soporte por email"
 ];
 
 const Pricing = () => {
@@ -31,7 +33,7 @@ const Pricing = () => {
             Un plan, <span className="gradient-text">todo incluido</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Empeza gratis durante 7 o 14 dias. Sin tarjeta de credito.
+            Pagás solo por cada restaurante activo. Sin costo de instalación ni planes complicados.
           </p>
         </motion.div>
 
@@ -47,23 +49,24 @@ const Pricing = () => {
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles size={20} className="text-accent" />
                 <span className="text-sm font-semibold text-accent">
-                  Mas popular
+                  Sin costo de instalación
                 </span>
               </div>
 
               <h3 className="font-display text-2xl font-bold text-foreground">
-                Plan Restaurante
+                Plan por restaurante
               </h3>
 
               <div className="mt-4 mb-6">
                 <span className="font-display text-5xl font-bold text-foreground">
-                  $15.000
+                  $15.000 
+                  por restaurante activo
                 </span>
                 <span className="text-muted-foreground ml-2">/mes</span>
               </div>
 
               <p className="text-sm text-muted-foreground mb-6">
-                Elegi prueba de 7 o 14 dias. Luego podes activar suscripcion mensual.
+                Activá el plan mensual para tu restaurante. Podés agregar más locales cuando quieras y el monto se actualiza en la próxima renovación.
               </p>
 
               <div className="space-y-2">
@@ -72,15 +75,15 @@ const Pricing = () => {
                     size="lg"
                     className="w-full gradient-primary text-primary-foreground shadow-lg shadow-primary/25 h-12 text-base"
                   >
-                    Proba 7 dias
+                    Activar suscripción
                     <ArrowRight className="ml-2" size={18} />
                   </Button>
                 </Link>
-                <Link href="/sign-up?plan=trial&trialDays=14">
+                {/* <Link href="/sign-up?plan=trial&trialDays=14">
                   <Button size="lg" className="w-full h-11 text-base border border-border bg-transparent text-foreground hover:bg-muted" variant="ghost">
                     Proba 14 dias
                   </Button>
-                </Link>
+                </Link> */}
               </div>
 
               <div className="mt-8 space-y-3">

@@ -34,12 +34,12 @@ const Navbar = () => {
           >
             Como funciona
           </button>
-          <button
+          {/* <button
             onClick={() => scrollTo("testimonios")}
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Testimonios
-          </button>
+          </button> */}
           <button
             onClick={() => scrollTo("pricing")}
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"

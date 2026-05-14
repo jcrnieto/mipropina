@@ -7,27 +7,27 @@ const steps = [
   {
     icon: Users,
     step: "01",
-    title: "Configurá tu local",
+    title: "Configurá las señales importantes para tu negocio",
     description:
-      "El dueño registra su negocio y define qué aspectos se van a evaluar (limpieza, atención, tiempos, costo-calidad y más) desde el dashboard.",
+      "Cargá tu local y elegí qué situaciones querés detectar: atención del mozo, demora del pedido, comida, limpieza u otros puntos críticos del servicio.",
     color: "gradient-primary",
     shadow: "shadow-primary/20",
   },
   {
     icon: QrCode,
     step: "02",
-    title: "Generá el QR",
+    title: "Colocá el QR en la mesa",
     description:
-      "Se genera un QR único para cada mesa que apunta a satix.app/tu-local. Imprimilo y listo.",
+      "Satix genera un QR listo para imprimir. El cliente lo escanea desde la mesa y califica su experiencia en segundos, sin descargar nada.",
     color: "gradient-secondary",
     shadow: "shadow-secondary/20",
   },
   {
     icon: CreditCard,
     step: "03",
-    title: "Recibí feedback (y propinas)",
+    title: "Recibí alertas al instante",
     description:
-      "El cliente escanea, califica la experiencia en segundos y, si quiere, también puede dejar propina por Mercado Pago. Todo queda registrado.",
+      "Si una mesa califica con 1 o 2 estrellas, el dueño o encargado recibe una alerta para intervenir antes de que el cliente se vaya.",
     color: "gradient-accent",
     shadow: "shadow-accent/20",
   },
@@ -51,7 +51,7 @@ const HowItWorks = () => {
             ¿Cómo <span className="gradient-text">funciona</span>?
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            En 3 simples pasos, empezás a medir la experiencia de tu local en tiempo real
+            En 3 pasos, detectás malas experiencias antes de que terminen en Google.
           </p>
         </motion.div>
 
