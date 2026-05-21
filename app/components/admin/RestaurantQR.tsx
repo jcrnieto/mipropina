@@ -13,7 +13,7 @@ export function RestaurantQR({ brandSlug }: RestaurantQRProps) {
   const [isCopied, setIsCopied] = useState(false);
 
   const publicUrl = useMemo(() => {
-    const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const base = process.env.NEXT_PUBLIC_APP_URL || "https://satixapp.com";
     return `${base.replace(/\/+$/, "")}/${brandSlug}`;
   }, [brandSlug]);
 
