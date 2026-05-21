@@ -29,7 +29,8 @@ export function OneSignalInit({ externalId }: OneSignalInitProps) {
       await oneSignal.init({
         appId,
         allowLocalhostAsSecureOrigin: process.env.NODE_ENV !== "production",
-        serviceWorkerPath: "push/onesignal/OneSignalSDKWorker.js",
+        serviceWorkerPath: "/push/onesignal/OneSignalSDKWorker.js",
+        serviceWorkerUpdaterPath: "/push/onesignal/OneSignalSDKUpdaterWorker.js",
         serviceWorkerParam: {
           scope: "/push/onesignal/",
         },
