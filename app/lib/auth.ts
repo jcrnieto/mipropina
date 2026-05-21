@@ -337,7 +337,12 @@ export async function requireOnboardedUser(): Promise<{
   }
 
   if (!hasActiveAdminAccess(billing)) {
-    redirect("/onboarding?billing=required");
+    const queryParams = new URLSearchParams({
+      billing: "required",
+      reason: billing.status,
+    }).toString();
+
+    redirect(`/onboarding?${queryParams}`);
   }
 
   return { user, onboarding, billing };

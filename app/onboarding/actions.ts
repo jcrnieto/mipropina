@@ -10,6 +10,11 @@ import {
   computeTrialWindow,
   createMercadoPagoSubscriptionCheckout,
 } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
+import { slugifyBrand } from "@/app/lib/brand";
+import {
+  sendSubscriptionPendingEmail,
+  sendTrialWelcomeEmail,
+} from "@/app/api/mail/service";
 import { validateOnboardingForm } from "../validations";
 
 type BillingMode = "trial" | "subscription";
@@ -51,11 +56,16 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
   const billingMode = parseBillingMode(formData.get("billingMode"));
   const trialDays = parseTrialDays(formData.get("trialDays"));
 
+  const rawBrandName = String(formData.get("brandName") ?? "").trim();
+  const rawRestaurantName = String(formData.get("restaurantName") ?? "").trim();
+  const derivedBrandSlug = slugifyBrand(rawBrandName);
+  const derivedRestaurantSlug = slugifyBrand(rawRestaurantName);
+
   const validation = validateOnboardingForm({
-    brandName: String(formData.get("brandName") ?? ""),
-    brandSlug: String(formData.get("brandSlug") ?? ""),
-    restaurantName: String(formData.get("restaurantName") ?? ""),
-    restaurantSlug: String(formData.get("restaurantSlug") ?? ""),
+    brandName: rawBrandName,
+    brandSlug: derivedBrandSlug,
+    restaurantName: rawRestaurantName,
+    restaurantSlug: derivedRestaurantSlug,
   });
 
   if (!validation.isValid) {
@@ -76,6 +86,8 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
       ?.emailAddress ??
     clerkUser.emailAddresses[0]?.emailAddress ??
     null;
+  const recipientName =
+    clerkUser.firstName || clerkUser.lastName || clerkUser.username || "Contacto Satix";
 
   const baseMetadata = {
     onboardingComplete: true,
@@ -150,6 +162,20 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
       canceledAt: null,
     });
 
+    if (primaryEmail) {
+      try {
+        await sendTrialWelcomeEmail({
+          email: primaryEmail,
+          name: recipientName,
+          brandName,
+          trialDays,
+          trialEndsAt: trialWindow.endsAtIso,
+        });
+      } catch (error) {
+        console.error("[email] failed to send trial welcome email", error);
+      }
+    }
+
     redirect("/admin");
   }
 
@@ -203,5 +229,18 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
     });
   }
 
+    if (primaryEmail) {
+      try {
+        await sendSubscriptionPendingEmail({
+          email: primaryEmail,
+          name: recipientName,
+          brandName,
+        });
+      } catch (error) {
+        console.error("[email] failed to send subscription pending email", error);
+      }
+    }
+
   redirect(checkout.checkoutUrl);
 }
+

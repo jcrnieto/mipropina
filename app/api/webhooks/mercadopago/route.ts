@@ -6,6 +6,7 @@ import {
   readBrandIdFromExternalReference,
   resolveBillingStatusFromPreapprovalStatus,
 } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
+import { sendSubscriptionActiveEmail } from "@/app/api/mail/service";
 
 function readPreapprovalIdFromNotification(input: unknown): string | null {
   if (!input || typeof input !== "object") return null;
@@ -67,6 +68,28 @@ export async function POST(req: Request) {
       mpLastEventId: preapproval.id,
       canceledAt: billingStatus === "subscription_cancelled" ? new Date().toISOString() : null,
     });
+
+    if (billingStatus === "subscription_active") {
+      try {
+        const user = await client.users.getUser(brand.owner_auth_user_id);
+        const primaryEmail =
+          user.emailAddresses.find((email) => email.id === user.primaryEmailAddressId)
+            ?.emailAddress ??
+          user.emailAddresses[0]?.emailAddress ??
+          null;
+        const recipientName = user.firstName || user.lastName || user.username || "Contacto Satix";
+
+        if (primaryEmail) {
+          await sendSubscriptionActiveEmail({
+            email: primaryEmail,
+            name: recipientName,
+            brandName: brand.name,
+          });
+        }
+      } catch (error) {
+        console.error("[email] failed to send subscription active email", error);
+      }
+    }
 
     return Response.json({ ok: true });
   } catch (error) {
