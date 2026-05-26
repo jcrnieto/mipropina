@@ -88,36 +88,42 @@ export function getOnboardingDataFromUser(user: ClerkUser): OnboardingData {
 
 export async function resolveOnboardingDataForUser(user: ClerkUser): Promise<OnboardingData> {
   const onboarding = getOnboardingDataFromUser(user);
-  if (onboarding.brandId) {
-    return onboarding;
-  }
-
   const brand = await getBrandByClerkId(user.id);
   if (!brand) {
     return onboarding;
   }
 
-  try {
-    const client = await clerkClient();
-    await client.users.updateUserMetadata(user.id, {
-      publicMetadata: {
+  const adminPath = `/admin/${brand.slug}`;
+  const brandSlug = onboarding.brandSlug ?? brand.slug;
+
+  const resolvedOnboarding: OnboardingData = {
+    ...onboarding,
+    brandId: onboarding.brandId ?? brand.id,
+    brandName: onboarding.brandName ?? brand.name,
+    brandSlug,
+    adminPath,
+  };
+
+  if (!onboarding.brandId || !onboarding.brandSlug || !onboarding.adminPath) {
+    try {
+      const client = await clerkClient();
+      await client.users.updateUserMetadata(user.id, {
+        publicMetadata: {
+          brandId: brand.id,
+          brandSlug,
+          adminPath,
+        },
+      });
+    } catch (error) {
+      console.error("[auth] failed to backfill brand metadata in Clerk metadata", {
+        clerkUserId: user.id,
         brandId: brand.id,
-      },
-    });
-  } catch (error) {
-    console.error("[auth] failed to backfill brandId in Clerk metadata", {
-      clerkUserId: user.id,
-      brandId: brand.id,
-      error: error instanceof Error ? error.message : String(error),
-    });
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
-  return {
-    ...onboarding,
-    brandId: brand.id,
-    brandName: onboarding.brandName ?? brand.name,
-    adminPath: onboarding.adminPath ?? brand.admin_path ?? "/admin",
-  };
+  return resolvedOnboarding;
 }
 
 export function getBillingDataFromUser(user: ClerkUser): BillingData {

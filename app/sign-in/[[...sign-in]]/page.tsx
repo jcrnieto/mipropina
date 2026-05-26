@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { SignIn } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 
@@ -18,7 +18,7 @@ function resolveInternalRedirectUrl(value: string | undefined): string {
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const query = await searchParams;
-  const redirectUrl = resolveInternalRedirectUrl(query.redirect_url);
+  const redirectUrl = resolveInternalRedirectUrl(query.redirect_url ?? "/admin");
   const { userId } = await auth();
   if (userId) {
     redirect(redirectUrl);

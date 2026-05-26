@@ -46,6 +46,9 @@ export async function GET() {
         brandName: restaurant.brand_name ?? "",
         branchName: restaurant.branch_name ?? "",
         slug: restaurant.slug,
+        brandSlug: restaurant.brands_mipropina?.[0]?.slug ?? restaurant.slug,
+        brandPublicPath:
+          restaurant.brands_mipropina?.[0]?.public_path ?? restaurant.brands_mipropina?.[0]?.slug ?? restaurant.slug,
         phone: restaurant.phone ?? "",
         address: restaurant.address ?? "",
         instagram: restaurant.instagram ?? "",

@@ -5,26 +5,27 @@ import { Check, Copy, Download, Printer } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 
 type RestaurantQRProps = {
-  brandSlug: string;
+  storePath: string;
 };
 
-export function RestaurantQR({ brandSlug }: RestaurantQRProps) {
+export function RestaurantQR({ storePath }: RestaurantQRProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
   const publicUrl = useMemo(() => {
     const base = process.env.NEXT_PUBLIC_APP_URL || "https://satixapp.com";
-    return `${base.replace(/\/+$/, "")}/${brandSlug}`;
-  }, [brandSlug]);
+    return `${base.replace(/\/+$/, "")}${storePath}`;
+  }, [storePath]);
 
   const downloadPng = () => {
-    const canvas = canvasRef.current;
+    const canvas = (containerRef.current?.querySelector("canvas") as HTMLCanvasElement) || canvasRef.current;
     if (!canvas) return;
 
     const pngUrl = canvas.toDataURL("image/png");
     const anchor = document.createElement("a");
     anchor.href = pngUrl;
-    anchor.download = `qr-${brandSlug}.png`;
+    anchor.download = `qr-${storePath.replace(/\//g, "-")}.png`;
     anchor.click();
   };
 
@@ -39,8 +40,8 @@ export function RestaurantQR({ brandSlug }: RestaurantQRProps) {
       <h2 className="mb-5 font-serif text-4xl font-bold leading-none text-[#1d1d1b]">QR del Restaurante</h2>
 
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
-        <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#e7cda8] bg-white p-2">
-          <QRCodeCanvas value={publicUrl} size={96} level="M" includeMargin ref={canvasRef} />
+        <div ref={containerRef} className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#e7cda8] bg-white p-2">
+          <QRCodeCanvas value={publicUrl} size={96} level="M" includeMargin />
         </div>
 
         <div className="space-y-2">

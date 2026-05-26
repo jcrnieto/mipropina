@@ -8,6 +8,8 @@ import { buildAdminPath, buildStorePath, slugifyBrand } from "@/app/lib/brand";
 type RestaurantItem = {
   id: string;
   brandName: string;
+  brandSlug: string;
+  brandPublicPath: string;
   branchName: string;
   slug: string;
   phone: string;
@@ -22,6 +24,7 @@ type RestaurantItem = {
 type RestaurantsManagerProps = {
   initialRestaurants: RestaurantItem[];
   billingStatus: string;
+  brandSlug?: string;
 };
 
 type RestaurantForm = {
@@ -56,7 +59,7 @@ function normalizeSlugDraft(value: string): string {
     .replace(/^-+/, "");
 }
 
-export function RestaurantsManager({ initialRestaurants, billingStatus }: RestaurantsManagerProps) {
+export function RestaurantsManager({ initialRestaurants, billingStatus, brandSlug }: RestaurantsManagerProps) {
   const [restaurants, setRestaurants] = useState<RestaurantItem[]>(initialRestaurants);
   const [form, setForm] = useState<RestaurantForm>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,6 +100,19 @@ export function RestaurantsManager({ initialRestaurants, billingStatus }: Restau
     setForm((previous) => {
       const next = { ...previous, brandName: value };
       if (!previous.slug || previous.slug === slugifyBrand(previous.brandName || "")) {
+        next.slug = slugifyBrand(value);
+      }
+      return next;
+    });
+  };
+
+  const handleBranchNameChange = (value: string) => {
+    setForm((previous) => {
+      const next = { ...previous, branchName: value };
+      const slugWasDerivedFromBrand = previous.slug === slugifyBrand(previous.brandName || "");
+      const slugWasDerivedFromBranch = previous.slug === slugifyBrand(previous.branchName || "");
+
+      if (!previous.slug || slugWasDerivedFromBrand || slugWasDerivedFromBranch) {
         next.slug = slugifyBrand(value);
       }
       return next;
@@ -228,7 +244,7 @@ export function RestaurantsManager({ initialRestaurants, billingStatus }: Restau
                 <span className="text-sm font-medium text-[#22365f]">Sucursal</span>
                 <input
                   value={form.branchName}
-                  onChange={(event) => setForm((previous) => ({ ...previous, branchName: event.target.value }))}
+                  onChange={(event) => handleBranchNameChange(event.target.value)}
                   placeholder="Ej: Palermo"
                   className="w-full rounded-xl border border-[#d6dfef] bg-[#f8fbff] px-4 py-2 text-sm text-[#1b2c4e] outline-none placeholder:text-[#95a4c0] focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
                 />
@@ -324,14 +340,14 @@ export function RestaurantsManager({ initialRestaurants, billingStatus }: Restau
 
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link
-                      href={buildAdminPath(restaurant.slug)}
+                      href={buildAdminPath(brandSlug ?? restaurant.brandSlug, restaurant.slug)}
                       className="inline-flex items-center gap-2 rounded-xl border border-[#2f66dc] bg-[#2f66dc] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2457c4]"
                     >
                       Abrir panel
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                     <Link
-                      href={buildStorePath(restaurant.slug)}
+                      href={buildStorePath(restaurant.brandPublicPath, restaurant.slug)}
                       target="_blank"
                       className="inline-flex items-center gap-2 rounded-xl border border-[#d6dfef] bg-white px-4 py-2 text-sm font-medium text-[#1c376f] transition hover:bg-[#f7f9ff]"
                     >

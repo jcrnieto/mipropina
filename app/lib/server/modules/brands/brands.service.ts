@@ -1,7 +1,7 @@
 import {
-  getBrandById,
+  getBrandById as getBrandByIdRepo,
   getBrandByOwnerAuthUserId,
-  getBrandBySlug,
+  getBrandBySlug as getBrandBySlugRepo,
   insertBrand,
   patchBrandById,
   type BrandRow,
@@ -10,6 +10,14 @@ import { getUsersMipropinaIdByClerkId } from "@/app/lib/server/modules/users/use
 
 export async function getBrandByClerkId(clerkUserId: string): Promise<BrandRow | null> {
   return getBrandByOwnerAuthUserId(clerkUserId);
+}
+
+export async function getBrandById(brandId: string): Promise<BrandRow | null> {
+  return getBrandByIdRepo(brandId);
+}
+
+export async function getBrandBySlug(slug: string): Promise<BrandRow | null> {
+  return getBrandBySlugRepo(slug);
 }
 
 export async function getBrandByIdOrThrow(brandId: string): Promise<BrandRow> {

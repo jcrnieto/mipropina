@@ -1,5 +1,6 @@
 import {
   getOwnerByBrandSlug,
+  getRestaurantByBrandSlugAndRestaurantSlug,
   getPrimaryRestaurantByClerkId,
 } from "@/app/lib/server/modules/restaurants/restaurants.service";
 import { getUsersMipropinaIdByClerkId } from "@/app/lib/server/modules/users/users.repository";
@@ -57,9 +58,25 @@ export async function getActiveMenuByBrandSlug(brandSlug: string): Promise<MenuS
   return mapRowToSnapshot(row);
 }
 
+export async function getActiveMenuByBrandAndRestaurantSlug(
+  brandSlug: string,
+  restaurantSlug: string,
+): Promise<MenuSnapshot | null> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(brandSlug, restaurantSlug);
+  if (!restaurant) {
+    return null;
+  }
+
+  const rows = await listMenuByRestaurantId(restaurant.id);
+  const row = rows.find((item) => item.is_active) ?? rows[0] ?? null;
+  if (!row) return null;
+  return mapRowToSnapshot(row);
+}
+
 export async function upsertMenuByClerkId(input: {
   clerkUserId: string;
   brandSlug?: string | null;
+  restaurantSlug?: string | null;
   fileUrl: string;
   filePath: string;
   mimeType: string;
@@ -72,9 +89,17 @@ export async function upsertMenuByClerkId(input: {
     file_size_bytes: input.fileSizeBytes ?? null,
     is_active: true,
   };
-  const restaurantId = input.brandSlug
-    ? (await getOwnerByBrandSlug(input.brandSlug))?.restaurant_id ?? null
-    : (await getPrimaryRestaurantByClerkId(input.clerkUserId))?.id ?? null;
+  const restaurant =
+    input.brandSlug && input.restaurantSlug
+      ? await getRestaurantByBrandSlugAndRestaurantSlug(input.brandSlug, input.restaurantSlug)
+      : null;
+  const restaurantId = restaurant
+    ? restaurant.auth_user_id === input.clerkUserId
+      ? restaurant.id
+      : null
+    : input.brandSlug
+      ? (await getOwnerByBrandSlug(input.brandSlug))?.restaurant_id ?? null
+      : (await getPrimaryRestaurantByClerkId(input.clerkUserId))?.id ?? null;
   if (!restaurantId) {
     throw new Error("Cannot upsert menu without restaurant row");
   }
@@ -90,7 +115,6 @@ export async function upsertMenuByClerkId(input: {
   }
 
   const insertedRows = await insertMenu({
-    restaurant_id: restaurantId,
     user_id: usersMipropinaId,
     auth_user_id: input.clerkUserId,
     file_url: input.fileUrl,

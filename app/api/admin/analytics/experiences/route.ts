@@ -14,6 +14,7 @@ export async function GET(req: Request) {
     const limit = readPositiveInt(searchParams, "limit", 20, 200);
     const offset = readPositiveInt(searchParams, "offset", 0, 10000);
     const brandSlug = searchParams.get("brandSlug");
+    const restaurantSlug = searchParams.get("restaurantSlug");
 
     const experiences = await getAnalyticsExperiencesByClerkId({
       clerkUserId: userId,
@@ -21,6 +22,7 @@ export async function GET(req: Request) {
       limit,
       offset,
       brandSlug,
+      restaurantSlug,
     });
 
     return Response.json({ ok: true, ...experiences, range });

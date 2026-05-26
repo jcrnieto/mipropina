@@ -2,7 +2,6 @@ import { supabaseRestRequest } from "@/app/lib/server/supabase/client";
 
 export type MenuMipropinaRow = {
   id: string;
-  restaurant_id?: string;
   user_id: string;
   auth_user_id: string;
   file_url: string;
@@ -15,7 +14,6 @@ export type MenuMipropinaRow = {
 };
 
 export type MenuMipropinaPayload = {
-  restaurant_id: string;
   user_id: string;
   auth_user_id: string;
   file_url: string;
@@ -26,12 +24,33 @@ export type MenuMipropinaPayload = {
 };
 
 const MENU_SELECT =
-  "id,restaurant_id,user_id,auth_user_id,file_url,file_path,mime_type,file_size_bytes,is_active,created_at,updated_at";
+  "id,user_id,auth_user_id,file_url,file_path,mime_type,file_size_bytes,is_active,created_at,updated_at";
+
+async function getMenuUserIdByRestaurantId(restaurantId: string): Promise<string | null> {
+  const encodedRestaurantId = encodeURIComponent(restaurantId);
+  const restaurantResponse = await supabaseRestRequest(
+    `/rest/v1/restaurants_mipropina?id=eq.${encodedRestaurantId}&select=user_id&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  const restaurants = (await restaurantResponse.json()) as Array<{ user_id: string }>;
+  return restaurants[0]?.user_id ?? null;
+}
 
 export async function listMenuByRestaurantId(restaurantId: string): Promise<MenuMipropinaRow[]> {
-  const encodedRestaurantId = encodeURIComponent(restaurantId);
+  const userId = await getMenuUserIdByRestaurantId(restaurantId);
+  if (!userId) {
+    return [];
+  }
+
+  const encodedUserId = encodeURIComponent(userId);
   const response = await supabaseRestRequest(
-    `/rest/v1/menu_mipropina?restaurant_id=eq.${encodedRestaurantId}&select=${MENU_SELECT}&order=updated_at.desc&limit=1`,
+    `/rest/v1/menu_mipropina?user_id=eq.${encodedUserId}&select=${MENU_SELECT}&order=updated_at.desc&limit=1`,
     {
       method: "GET",
       headers: {
@@ -47,9 +66,14 @@ export async function patchMenuByRestaurantId(
   restaurantId: string,
   payload: Partial<MenuMipropinaPayload>,
 ): Promise<MenuMipropinaRow[]> {
-  const encodedRestaurantId = encodeURIComponent(restaurantId);
+  const userId = await getMenuUserIdByRestaurantId(restaurantId);
+  if (!userId) {
+    return [];
+  }
+
+  const encodedUserId = encodeURIComponent(userId);
   const response = await supabaseRestRequest(
-    `/rest/v1/menu_mipropina?restaurant_id=eq.${encodedRestaurantId}`,
+    `/rest/v1/menu_mipropina?user_id=eq.${encodedUserId}`,
     {
       method: "PATCH",
       headers: {

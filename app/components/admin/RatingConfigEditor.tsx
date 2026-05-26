@@ -10,7 +10,13 @@ type ApiResponse = {
   error?: string;
 };
 
-export function RatingConfigEditor({ brandSlug }: { brandSlug: string }) {
+export function RatingConfigEditor({
+  brandSlug,
+  restaurantSlug,
+}: {
+  brandSlug: string;
+  restaurantSlug?: string;
+}) {
   const [features, setFeatures] = useState<string[]>([""]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -19,10 +25,14 @@ export function RatingConfigEditor({ brandSlug }: { brandSlug: string }) {
 
   useEffect(() => {
     let isMounted = true;
+    const query = new URLSearchParams({ brandSlug });
+    if (restaurantSlug) {
+      query.set("restaurantSlug", restaurantSlug);
+    }
 
     const loadConfig = async () => {
       try {
-        const response = await fetch(`/api/admin/rating-config?brandSlug=${encodeURIComponent(brandSlug)}`, {
+        const response = await fetch(`/api/admin/rating-config?${query.toString()}`, {
           method: "GET",
           cache: "no-store",
         });
@@ -52,7 +62,7 @@ export function RatingConfigEditor({ brandSlug }: { brandSlug: string }) {
     return () => {
       isMounted = false;
     };
-  }, [brandSlug]);
+  }, [brandSlug, restaurantSlug]);
 
   const nonEmptyCount = useMemo(
     () => features.map((item) => item.trim()).filter((item) => item.length > 0).length,
@@ -79,7 +89,12 @@ export function RatingConfigEditor({ brandSlug }: { brandSlug: string }) {
     setSuccess(null);
 
     try {
-      const scopedResponse = await fetch(`/api/admin/rating-config?brandSlug=${encodeURIComponent(brandSlug)}`, {
+      const query = new URLSearchParams({ brandSlug });
+      if (restaurantSlug) {
+        query.set("restaurantSlug", restaurantSlug);
+      }
+
+      const scopedResponse = await fetch(`/api/admin/rating-config?${query.toString()}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

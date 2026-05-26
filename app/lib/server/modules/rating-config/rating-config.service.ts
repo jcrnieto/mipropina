@@ -1,7 +1,13 @@
-import { getOwnerByBrandSlug } from "@/app/lib/server/modules/restaurants/restaurants.service";
+import {
+  getOwnerByBrandSlug,
+  getPrimaryRestaurantByClerkId,
+  getRestaurantByBrandSlugAndRestaurantSlug,
+} from "@/app/lib/server/modules/restaurants/restaurants.service";
 import { getUsersMipropinaIdByClerkId } from "@/app/lib/server/modules/users/users.repository";
-import { getEmployeeByBrandSlugAndId } from "@/app/lib/server/modules/waiters/waiters.service";
-import { getPrimaryRestaurantByClerkId } from "@/app/lib/server/modules/restaurants/restaurants.service";
+import {
+  getEmployeeByBrandAndRestaurantSlugAndId,
+  getEmployeeByBrandSlugAndId,
+} from "@/app/lib/server/modules/waiters/waiters.service";
 import {
   getRatingConfigRowByRestaurantId,
   insertRatingConfig,
@@ -61,15 +67,24 @@ export async function getRatingConfigByBrandSlug(brandSlug: string): Promise<{
 export async function upsertRatingConfigByClerkId(input: {
   clerkUserId: string;
   brandSlug?: string | null;
+  restaurantSlug?: string | null;
   features: string[];
 }): Promise<{ features: string[] }> {
   const usersMipropinaId = await getUsersMipropinaIdByClerkId(input.clerkUserId);
   if (!usersMipropinaId) {
     throw new Error("No se encontro users_mipropina para guardar la configuracion.");
   }
-  const restaurantId = input.brandSlug
-    ? (await getOwnerByBrandSlug(input.brandSlug))?.restaurant_id ?? null
-    : (await getPrimaryRestaurantByClerkId(input.clerkUserId))?.id ?? null;
+  const restaurant =
+    input.brandSlug && input.restaurantSlug
+      ? await getRestaurantByBrandSlugAndRestaurantSlug(input.brandSlug, input.restaurantSlug)
+      : null;
+  const restaurantId = restaurant
+    ? restaurant.auth_user_id === input.clerkUserId
+      ? restaurant.id
+      : null
+    : input.brandSlug
+      ? (await getOwnerByBrandSlug(input.brandSlug))?.restaurant_id ?? null
+      : (await getPrimaryRestaurantByClerkId(input.clerkUserId))?.id ?? null;
   if (!restaurantId) {
     throw new Error("No se encontro restaurante para guardar la configuracion.");
   }
@@ -146,6 +161,89 @@ export async function createRatingSubmissionByBrandSlug(input: {
     restaurant_id: owner.restaurant_id,
     user_id: owner.user_id,
     auth_user_id: owner.auth_user_id,
+    stars_1: input.stars[0] ?? null,
+    stars_2: input.stars[1] ?? null,
+    stars_3: input.stars[2] ?? null,
+    stars_4: input.stars[3] ?? null,
+    stars_5: input.stars[4] ?? null,
+    waiter_id: waiterId,
+    waiter_service_stars: waiterServiceStars,
+    entry_type: entryType,
+    comment: input.comment?.trim() || null,
+  });
+}
+
+export async function getRatingConfigByBrandAndRestaurantSlug(
+  brandSlug: string,
+  restaurantSlug: string,
+): Promise<{
+  features: string[];
+} | null> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(brandSlug, restaurantSlug);
+  if (!restaurant?.id) {
+    return null;
+  }
+
+  const row = await getRatingConfigRowByRestaurantId(restaurant.id);
+  if (!row) {
+    return null;
+  }
+
+  return {
+    features: normalizeFeaturesFromRow(row),
+  };
+}
+
+export async function getRatingFeaturesByBrandAndRestaurantSlug(
+  brandSlug: string,
+  restaurantSlug: string,
+): Promise<string[]> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(brandSlug, restaurantSlug);
+  if (!restaurant?.id) {
+    return [];
+  }
+
+  const row = await getRatingConfigRowByRestaurantId(restaurant.id);
+  if (!row) {
+    return [];
+  }
+
+  return normalizeFeaturesFromRow(row);
+}
+
+export async function createRatingSubmissionByBrandAndRestaurantSlug(input: {
+  brandSlug: string;
+  restaurantSlug: string;
+  stars: Array<number | null>;
+  comment?: string | null;
+  waiterId?: string | null;
+  waiterServiceStars?: number | null;
+  entryType?: "general" | "waiter_qr";
+}): Promise<void> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(input.brandSlug, input.restaurantSlug);
+  if (!restaurant?.id || !restaurant.user_id || !restaurant.auth_user_id) {
+    throw new Error("No se encontro el restaurante para guardar la calificacion.");
+  }
+
+  const waiterId = input.waiterId?.trim() || null;
+  const entryType = input.entryType ?? (waiterId ? "waiter_qr" : "general");
+  const waiterServiceStars = waiterId ? input.waiterServiceStars ?? null : null;
+
+  if (waiterId) {
+    const waiter = await getEmployeeByBrandAndRestaurantSlugAndId(
+      input.brandSlug,
+      input.restaurantSlug,
+      waiterId,
+    );
+    if (!waiter) {
+      throw new Error("No se encontro el mozo seleccionado para este restaurante.");
+    }
+  }
+
+  await insertRatingSubmission({
+    restaurant_id: restaurant.id,
+    user_id: restaurant.user_id,
+    auth_user_id: restaurant.auth_user_id,
     stars_1: input.stars[0] ?? null,
     stars_2: input.stars[1] ?? null,
     stars_3: input.stars[2] ?? null,

@@ -7,10 +7,13 @@ export function slugifyBrand(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-export function buildAdminPath(brandSlug: string): string {
-  return `/admin/${brandSlug}`;
+export function buildAdminPath(brandSlug: string, restaurantSlug?: string): string {
+  if (!restaurantSlug) {
+    return `/admin/${brandSlug}`;
+  }
+  return `/admin/${brandSlug}/${restaurantSlug}`;
 }
 
-export function buildStorePath(brandSlug: string): string {
-  return `/${brandSlug}`;
+export function buildStorePath(brandPublicPath: string, restaurantSlug: string): string {
+  return `/${brandPublicPath}/${restaurantSlug}`;
 }

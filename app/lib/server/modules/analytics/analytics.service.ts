@@ -1,6 +1,7 @@
 import {
   getOwnerByBrandSlug,
   getPrimaryRestaurantByClerkId,
+  getRestaurantByBrandSlugAndRestaurantSlug,
 } from "@/app/lib/server/modules/restaurants/restaurants.service";
 import {
   getRatingConfigByBrandSlug,
@@ -346,7 +347,19 @@ function buildExperiences(
   });
 }
 
-async function resolveAnalyticsContext(input: { clerkUserId: string; brandSlug?: string | null }) {
+async function resolveAnalyticsContext(input: { clerkUserId: string; brandSlug?: string | null; restaurantSlug?: string | null }) {
+  if (input.brandSlug && input.restaurantSlug) {
+    const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(input.brandSlug, input.restaurantSlug);
+    if (!restaurant?.id) {
+      throw new Error("No se encontro el restaurante indicado para analytics.");
+    }
+
+    return {
+      restaurantId: restaurant.id,
+      brandSlug: input.brandSlug,
+    };
+  }
+
   if (input.brandSlug) {
     const owner = await getOwnerByBrandSlug(input.brandSlug);
     if (!owner?.restaurant_id) {
@@ -374,8 +387,13 @@ export async function getAnalyticsSummaryByClerkId(input: {
   clerkUserId: string;
   range: DateRangeInput;
   brandSlug?: string | null;
+  restaurantSlug?: string | null;
 }) {
-  const context = await resolveAnalyticsContext(input);
+  const context = await resolveAnalyticsContext({
+    clerkUserId: input.clerkUserId,
+    brandSlug: input.brandSlug,
+    restaurantSlug: input.restaurantSlug,
+  });
   const rows = await listRatingSubmissionsByRestaurantId({
     restaurantId: context.restaurantId,
     range: input.range,
@@ -387,8 +405,13 @@ export async function getAnalyticsTrendByClerkId(input: {
   clerkUserId: string;
   range: DateRangeInput;
   brandSlug?: string | null;
+  restaurantSlug?: string | null;
 }) {
-  const context = await resolveAnalyticsContext(input);
+  const context = await resolveAnalyticsContext({
+    clerkUserId: input.clerkUserId,
+    brandSlug: input.brandSlug,
+    restaurantSlug: input.restaurantSlug,
+  });
   const rows = await listRatingSubmissionsByRestaurantId({
     restaurantId: context.restaurantId,
     range: input.range,
@@ -400,8 +423,13 @@ export async function getAnalyticsDistributionByClerkId(input: {
   clerkUserId: string;
   range: DateRangeInput;
   brandSlug?: string | null;
+  restaurantSlug?: string | null;
 }) {
-  const context = await resolveAnalyticsContext(input);
+  const context = await resolveAnalyticsContext({
+    clerkUserId: input.clerkUserId,
+    brandSlug: input.brandSlug,
+    restaurantSlug: input.restaurantSlug,
+  });
   const rows = await listRatingSubmissionsByRestaurantId({
     restaurantId: context.restaurantId,
     range: input.range,
@@ -413,8 +441,13 @@ export async function getAnalyticsFeatureRankingByClerkId(input: {
   clerkUserId: string;
   range: DateRangeInput;
   brandSlug?: string | null;
+  restaurantSlug?: string | null;
 }) {
-  const context = await resolveAnalyticsContext(input);
+  const context = await resolveAnalyticsContext({
+    clerkUserId: input.clerkUserId,
+    brandSlug: input.brandSlug,
+    restaurantSlug: input.restaurantSlug,
+  });
   const [rows, config] = await Promise.all([
     listRatingSubmissionsByRestaurantId({
       restaurantId: context.restaurantId,
@@ -431,8 +464,13 @@ export async function getAnalyticsWaiterRankingByClerkId(input: {
   range: DateRangeInput;
   minSamples: number;
   brandSlug?: string | null;
+  restaurantSlug?: string | null;
 }) {
-  const context = await resolveAnalyticsContext(input);
+  const context = await resolveAnalyticsContext({
+    clerkUserId: input.clerkUserId,
+    brandSlug: input.brandSlug,
+    restaurantSlug: input.restaurantSlug,
+  });
   const [rows, waiters] = await Promise.all([
     listRatingSubmissionsByRestaurantId({
       restaurantId: context.restaurantId,
@@ -450,9 +488,14 @@ export async function getAnalyticsExperiencesByClerkId(input: {
   limit: number;
   offset: number;
   brandSlug?: string | null;
+  restaurantSlug?: string | null;
 }) {
   const pageSize = Math.max(1, input.limit);
-  const context = await resolveAnalyticsContext(input);
+  const context = await resolveAnalyticsContext({
+    clerkUserId: input.clerkUserId,
+    brandSlug: input.brandSlug,
+    restaurantSlug: input.restaurantSlug,
+  });
   const rows = await listRatingSubmissionsByRestaurantId({
     restaurantId: context.restaurantId,
     range: input.range,

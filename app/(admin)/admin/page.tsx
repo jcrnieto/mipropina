@@ -1,45 +1,8 @@
+import { redirect } from "next/navigation";
 import { requireOnboardedUser } from "@/app/lib/auth";
-import { RestaurantsManager } from "@/app/components/admin/RestaurantsManager";
-import { listRestaurantsByClerkId } from "@/app/lib/server/modules/restaurants/restaurants.service";
-import { UpgradeToProCard } from "@/app/components/admin/UpgradeToProCard";
 
 export default async function AdminIndexPage() {
-  const { user, billing } = await requireOnboardedUser();
-  const restaurants = await listRestaurantsByClerkId(user.id);
-
-  const billingLabel =
-    billing.status === "subscription_active"
-      ? "Suscripcion activa"
-      : billing.status === "trial_active"
-        ? "Prueba activa"
-        : billing.status === "subscription_pending"
-          ? "Suscripcion pendiente"
-          : billing.status === "subscription_cancelled"
-            ? "Suscripcion cancelada"
-            : "Acceso limitado";
-
-  return (
-    <main className="min-h-screen bg-[linear-gradient(160deg,#eef4ff_0%,#f8fbff_42%,#ffffff_100%)]">
-      <div className="mx-auto max-w-6xl space-y-6 px-4 py-6">
-        {billing.status === "trial_active" ? <UpgradeToProCard trialEndsAt={billing.trialEndsAt} /> : null}
-        <RestaurantsManager
-          initialRestaurants={restaurants.map((restaurant) => ({
-            id: restaurant.id,
-            brandName: restaurant.brand_name ?? "",
-            branchName: restaurant.branch_name ?? "",
-            slug: restaurant.slug,
-            phone: restaurant.phone ?? "",
-            address: restaurant.address ?? "",
-            instagram: restaurant.instagram ?? "",
-            facebook: restaurant.facebook ?? "",
-            tiktok: restaurant.tiktok ?? "",
-            image: restaurant.image,
-            isActive: restaurant.is_active,
-          }))}
-          billingStatus={billingLabel}
-        />
-      </div>
-    </main>
-  );
+  const { onboarding } = await requireOnboardedUser();
+  redirect(onboarding.adminPath ?? "/admin");
 }
 

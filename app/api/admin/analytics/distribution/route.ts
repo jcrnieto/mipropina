@@ -12,10 +12,12 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const range = resolveAnalyticsDateRange(searchParams);
     const brandSlug = searchParams.get("brandSlug");
+    const restaurantSlug = searchParams.get("restaurantSlug");
     const distribution = await getAnalyticsDistributionByClerkId({
       clerkUserId: userId,
       range,
       brandSlug,
+      restaurantSlug,
     });
 
     return Response.json({ ok: true, distribution, range });

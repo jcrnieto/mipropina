@@ -2,7 +2,7 @@
 
 ## Proyecto
 
-Este proyecto se llama **Evalúa**.
+Este proyecto se llama **Satix**.
 
 Es una plataforma SaaS para dueños de restaurantes. Su objetivo es prevenir malas reseñas públicas capturando feedback del cliente dentro del local a través de un QR en la mesa.
 

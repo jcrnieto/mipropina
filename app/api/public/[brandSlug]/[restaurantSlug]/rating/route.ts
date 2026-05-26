@@ -1,9 +1,9 @@
 import {
-  createRatingSubmissionByBrandSlug,
-  getRatingFeaturesByBrandSlug,
+  createRatingSubmissionByBrandAndRestaurantSlug,
+  getRatingFeaturesByBrandAndRestaurantSlug,
 } from "@/app/lib/server/modules/rating-config/rating-config.service";
-import { getPublicStoreInfoByBrandSlug } from "@/app/lib/server/modules/restaurants/restaurants.service";
-import { getEmployeeByBrandSlugAndId } from "@/app/lib/server/modules/waiters/waiters.service";
+import { getPublicStoreInfoByBrandAndRestaurantSlug } from "@/app/lib/server/modules/restaurants/restaurants.service";
+import { getEmployeeByBrandAndRestaurantSlugAndId } from "@/app/lib/server/modules/waiters/waiters.service";
 import {
   sendWhatsAppLowRatingAlert,
   shouldNotifyLowRating,
@@ -11,7 +11,7 @@ import {
 import { shouldSendRestaurantNotification } from "@/app/lib/server/modules/notifications/notifications-config.service";
 
 type RouteProps = {
-  params: Promise<{ brandSlug: string }>;
+  params: Promise<{ brandSlug: string; restaurantSlug: string }>;
 };
 
 type RatingPayload = {
@@ -50,9 +50,12 @@ function readOptionalStar(value: unknown): number | null {
 
 export async function POST(req: Request, { params }: RouteProps) {
   try {
-    const { brandSlug } = await params;
-    if (!brandSlug) {
-      return Response.json({ ok: false, error: "brandSlug is required" }, { status: 400 });
+    const { brandSlug, restaurantSlug } = await params;
+    if (!brandSlug || !restaurantSlug) {
+      return Response.json(
+        { ok: false, error: "brandSlug and restaurantSlug are required" },
+        { status: 400 },
+      );
     }
 
     const body = (await req.json()) as RatingPayload;
@@ -60,7 +63,7 @@ export async function POST(req: Request, { params }: RouteProps) {
     const comment = readComment(body.comment);
     const waiterId = readOptionalString(body.waiterId);
     const waiterServiceStars = readOptionalStar(body.waiterServiceStars);
-    const configuredFeatures = await getRatingFeaturesByBrandSlug(brandSlug);
+    const configuredFeatures = await getRatingFeaturesByBrandAndRestaurantSlug(brandSlug, restaurantSlug);
     const hasWaiterContext = Boolean(waiterId);
 
     if (configuredFeatures.length === 0 && !hasWaiterContext) {
@@ -86,7 +89,7 @@ export async function POST(req: Request, { params }: RouteProps) {
     }
 
     if (hasWaiterContext) {
-      const waiter = await getEmployeeByBrandSlugAndId(brandSlug, waiterId!);
+      const waiter = await getEmployeeByBrandAndRestaurantSlugAndId(brandSlug, restaurantSlug, waiterId!);
       if (!waiter) {
         return Response.json({ ok: false, error: "El mozo indicado no pertenece a este restaurante." }, { status: 400 });
       }
@@ -106,8 +109,9 @@ export async function POST(req: Request, { params }: RouteProps) {
       }
     });
 
-    await createRatingSubmissionByBrandSlug({
+    await createRatingSubmissionByBrandAndRestaurantSlug({
       brandSlug,
+      restaurantSlug,
       stars: normalizedStars,
       comment,
       waiterId,
@@ -118,17 +122,17 @@ export async function POST(req: Request, { params }: RouteProps) {
     const shouldNotify =
       starsInput.length > 0 &&
       shouldNotifyLowRating(starsInput) &&
-      (await shouldSendRestaurantNotification({ brandSlug }));
+      (await shouldSendRestaurantNotification({ brandSlug, restaurantSlug }));
     if (shouldNotify) {
       try {
-        const storeInfo = await getPublicStoreInfoByBrandSlug(brandSlug);
+        const storeInfo = await getPublicStoreInfoByBrandAndRestaurantSlug(brandSlug, restaurantSlug);
         const ownerPhone = storeInfo?.phone?.trim() || "";
         if (ownerPhone) {
           const averageStars = starsInput.reduce((sum, item) => sum + item, 0) / starsInput.length;
           const lowestStars = Math.min(...starsInput);
           await sendWhatsAppLowRatingAlert({
             ownerPhone,
-            brandName: storeInfo?.brand_name?.trim() || brandSlug,
+            brandName: storeInfo?.brandName?.trim() || brandSlug,
             brandSlug,
             averageStars,
             lowestStars,
@@ -148,4 +152,3 @@ export async function POST(req: Request, { params }: RouteProps) {
     );
   }
 }
-

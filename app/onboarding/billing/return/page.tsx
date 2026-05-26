@@ -76,7 +76,7 @@ export default async function BillingReturnPage({ searchParams }: ReturnPageProp
   const refreshedOnboarding = await resolveOnboardingDataForUser(refreshedUser);
   const refreshedBilling = await getBillingDataForBrand(refreshedOnboarding.brandId, refreshedUser.id);
   if (hasActiveAdminAccess(refreshedBilling)) {
-    redirect("/admin");
+    redirect(refreshedOnboarding.adminPath ?? "/admin");
   }
 
   redirect("/onboarding?billing=required");

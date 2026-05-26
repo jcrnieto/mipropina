@@ -13,12 +13,14 @@ export async function GET(req: Request) {
     const range = resolveAnalyticsDateRange(searchParams);
     const minSamples = readPositiveInt(searchParams, "minSamples", 1, 100);
     const brandSlug = searchParams.get("brandSlug");
+    const restaurantSlug = searchParams.get("restaurantSlug");
 
     const waiters = await getAnalyticsWaiterRankingByClerkId({
       clerkUserId: userId,
       range,
       minSamples,
       brandSlug,
+      restaurantSlug,
     });
 
     return Response.json({ ok: true, waiters, minSamples, range });

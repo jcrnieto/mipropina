@@ -1,0 +1,180 @@
+import Link from "next/link";
+import Image from "next/image";
+import { redirect } from "next/navigation";
+import { BookOpenText, Facebook, Instagram, Music2, Star, Wallet, type LucideIcon } from "lucide-react";
+import { PublicStoreFooter } from "@/app/components/publicStore/PublicStoreFooter";
+import { getPublicStoreInfoByBrandAndRestaurantSlug } from "@/app/lib/server/modules/restaurants/restaurants.service";
+import { getActiveMenuByBrandAndRestaurantSlug } from "@/app/lib/server/modules/menu/menu.service";
+
+type PublicStorePageProps = {
+  params: Promise<{ brandSlug: string; restaurantSlug: string }>;
+  searchParams: Promise<{ waiter?: string | string[] }>;
+};
+
+function formatBrandName(brandSlug: string): string {
+  return brandSlug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function toPublicSocialUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const raw = value.trim();
+  if (!raw) return null;
+  const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+type SocialLinkItem = {
+  key: "instagram" | "facebook" | "tiktok";
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
+
+export default async function PublicStoreRestaurantPage({ params, searchParams }: PublicStorePageProps) {
+  console.log("[public-store] PublicStoreRestaurantPage rendering");
+  const [{ brandSlug, restaurantSlug }, search] = await Promise.all([params, searchParams]);
+  console.log("[public-store] Params resolved", { brandSlug, restaurantSlug });
+  const waiterId =
+    typeof search.waiter === "string" ? search.waiter : Array.isArray(search.waiter) ? search.waiter[0] : null;
+  const waiterQuery = waiterId ? `?waiter=${encodeURIComponent(waiterId)}` : "";
+  const [storeInfo, menu] = await Promise.all([
+    getPublicStoreInfoByBrandAndRestaurantSlug(brandSlug, restaurantSlug),
+    getActiveMenuByBrandAndRestaurantSlug(brandSlug, restaurantSlug),
+  ]);
+
+  if (!storeInfo) {
+    console.error("[public-store] Restaurant not found", {
+      brandSlug,
+      restaurantSlug,
+    });
+    redirect("/");
+  }
+
+  const brandName = storeInfo?.brandName?.trim() || formatBrandName(brandSlug);
+  const logo = storeInfo?.image ?? null;
+  const socialLinks = [
+    {
+      key: "instagram",
+      label: "Instagram",
+      href: toPublicSocialUrl(storeInfo?.instagram),
+      icon: Instagram,
+    },
+    {
+      key: "facebook",
+      label: "Facebook",
+      href: toPublicSocialUrl(storeInfo?.facebook),
+      icon: Facebook,
+    },
+    {
+      key: "tiktok",
+      label: "TikTok",
+      href: toPublicSocialUrl(storeInfo?.tiktok),
+      icon: Music2,
+    },
+  ].filter((item): item is SocialLinkItem => Boolean(item.href));
+
+  return (
+    <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#1d3658_0%,#0f1c33_40%,#081426_100%)] px-4 py-6 md:py-10">
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-[#2fa8dc]/25 blur-3xl" />
+      <div className="relative mx-auto flex w-full max-w-sm flex-col gap-4 rounded-[34px] border border-white/25 bg-[#0a1628]/55 p-5 shadow-[0_20px_65px_rgba(5,11,24,0.65)] backdrop-blur-md md:max-w-md">
+        <div className="mt-5 flex flex-col items-center">
+          <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-white/25 bg-white/10">
+            {logo ? (
+              <Image
+                src={logo}
+                alt={`Logo de ${brandName}`}
+                width={96}
+                height={96}
+                className="h-full w-full object-cover"
+                unoptimized
+              />
+            ) : (
+              <span className="text-3xl font-semibold text-white">{brandName.charAt(0).toUpperCase() || "R"}</span>
+            )}
+          </div>
+          <p className="mt-4 text-center text-2xl font-semibold tracking-wide text-white">{brandName}</p>
+        </div>
+
+        <div className="mt-2 space-y-3">
+          <Link
+            href={`/${brandSlug}/${restaurantSlug}/propina${waiterQuery}`}
+            className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#f0dfcb] bg-[#f0dfcb] px-4 text-base font-semibold text-[#17243b] transition hover:brightness-95"
+          >
+            <Wallet className="h-4 w-4" />
+            Propina
+          </Link>
+
+          <Link
+            href={`/${brandSlug}/${restaurantSlug}/resena${waiterQuery}`}
+            className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#f0dfcb] bg-[#f0dfcb] px-4 text-base font-semibold text-[#17243b] transition hover:brightness-95"
+          >
+            <Star className="h-4 w-4" />
+            Reseña
+          </Link>
+
+          <div className="my-4 flex items-center gap-3 px-2">
+            <div className="h-px flex-1 bg-white/30" />
+            <span className="text-xs uppercase tracking-[0.18em] text-white/70">secciones</span>
+            <div className="h-px flex-1 bg-white/30" />
+          </div>
+
+          {menu?.fileUrl ? (
+            <a
+              href={menu.fileUrl}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/45 bg-transparent px-4 text-base font-semibold text-white transition hover:bg-white/10"
+            >
+              <BookOpenText className="h-4 w-4" />
+              Menu
+            </a>
+          ) : (
+            <Link
+              href={`/${brandSlug}/${restaurantSlug}/menu`}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/45 bg-transparent px-4 text-base font-semibold text-white transition hover:bg-white/10"
+            >
+              <BookOpenText className="h-4 w-4" />
+              Menu
+            </Link>
+          )}
+
+          {socialLinks.length > 0 ? (
+            <div className="space-y-2 rounded-xl border border-white/20 bg-white/5 p-3">
+              <p className="text-xs uppercase tracking-[0.14em] text-white/70">Redes sociales</p>
+              <div className="grid gap-2">
+                {socialLinks.map((social) => {
+                  const Icon = social.icon;
+                  return (
+                    <a
+                      key={social.key}
+                      href={social.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/35 bg-transparent px-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                    >
+                      <Icon className="h-4 w-4" />
+                      {social.label}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <PublicStoreFooter />
+      </div>
+    </main>
+  );
+}

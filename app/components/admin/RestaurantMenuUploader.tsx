@@ -18,7 +18,13 @@ function formatBytes(input: number | null): string {
   return `${(input / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function RestaurantMenuUploader({ brandSlug }: { brandSlug: string }) {
+export function RestaurantMenuUploader({
+  brandSlug,
+  restaurantSlug,
+}: {
+  brandSlug: string;
+  restaurantSlug?: string;
+}) {
   const [menu, setMenu] = useState<MenuSnapshot>(null);
   const [isLoadingCurrent, setIsLoadingCurrent] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -27,10 +33,14 @@ export function RestaurantMenuUploader({ brandSlug }: { brandSlug: string }) {
 
   useEffect(() => {
     let mounted = true;
+    const query = new URLSearchParams({ brandSlug });
+    if (restaurantSlug) {
+      query.set("restaurantSlug", restaurantSlug);
+    }
 
     const loadCurrentMenu = async () => {
       try {
-        const response = await fetch(`/api/admin/menu?brandSlug=${encodeURIComponent(brandSlug)}`, {
+        const response = await fetch(`/api/admin/menu?${query.toString()}`, {
           method: "GET",
           cache: "no-store",
         });
@@ -62,7 +72,7 @@ export function RestaurantMenuUploader({ brandSlug }: { brandSlug: string }) {
     return () => {
       mounted = false;
     };
-  }, [brandSlug]);
+  }, [brandSlug, restaurantSlug]);
 
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -74,8 +84,12 @@ export function RestaurantMenuUploader({ brandSlug }: { brandSlug: string }) {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      const query = new URLSearchParams({ brandSlug });
+      if (restaurantSlug) {
+        query.set("restaurantSlug", restaurantSlug);
+      }
 
-      const response = await fetch(`/api/admin/menu?brandSlug=${encodeURIComponent(brandSlug)}`, {
+      const response = await fetch(`/api/admin/menu?${query.toString()}`, {
         method: "POST",
         body: formData,
       });

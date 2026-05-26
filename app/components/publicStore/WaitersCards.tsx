@@ -25,6 +25,7 @@ type StoreInfo = {
 };
 
 type WaitersCardsProps = {
+  storePathPrefix: string;
   brandSlug: string;
   mode?: "all" | "tip" | "review";
 };
@@ -119,7 +120,7 @@ function getRatingVisual(score: number): RatingVisual {
   }
 }
 
-export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
+export function WaitersCards({ storePathPrefix, brandSlug, mode = "all" }: WaitersCardsProps) {
   const searchParams = useSearchParams();
   const waiterIdFromQuery = searchParams.get("waiter");
   const [waiters, setWaiters] = useState<Waiter[]>([]);
@@ -143,7 +144,7 @@ export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
     const loadWaiters = async () => {
       try {
         setError(null);
-        const response = await fetch(`/api/public/${brandSlug}/waiters`, {
+        const response = await fetch(`/api/public/${storePathPrefix}/waiters`, {
           method: "GET",
           cache: "no-store",
         });
@@ -187,7 +188,7 @@ export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
     return () => {
       isMounted = false;
     };
-  }, [brandSlug, waiterIdFromQuery]);
+  }, [storePathPrefix, brandSlug, waiterIdFromQuery]);
 
   const brandName = useMemo(
     () => store.brandName?.trim() || formatBrandName(brandSlug),
@@ -224,7 +225,7 @@ export function WaitersCards({ brandSlug, mode = "all" }: WaitersCardsProps) {
     setRatingSuccess(null);
 
     try {
-      const response = await fetch(`/api/public/${brandSlug}/rating`, {
+      const response = await fetch(`/api/public/${storePathPrefix}/rating`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

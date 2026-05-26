@@ -68,7 +68,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
     hasActiveAdminAccess(billing) &&
     !forceSubscriptionFlow
   ) {
-    redirect("/admin");
+    redirect(onboarding.adminPath ?? "/admin");
   }
 
   const showBillingRequired = query.billing === "required";

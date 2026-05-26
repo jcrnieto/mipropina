@@ -120,7 +120,7 @@ function buildTrendPoints(data: TrendPoint[], width = 620, height = 220) {
   });
 }
 
-export function AnalyticsDashboard({ brandSlug }: { brandSlug: string }) {
+export function AnalyticsDashboard({ brandSlug, restaurantSlug }: { brandSlug: string; restaurantSlug?: string }) {
   const now = new Date();
   const fromDefault = new Date(now);
   fromDefault.setUTCDate(fromDefault.getUTCDate() - 29);
@@ -144,8 +144,11 @@ export function AnalyticsDashboard({ brandSlug }: { brandSlug: string }) {
     params.set("from", fromIso);
     params.set("to", toIso);
     params.set("brandSlug", brandSlug);
+    if (restaurantSlug) {
+      params.set("restaurantSlug", restaurantSlug);
+    }
     return params.toString();
-  }, [brandSlug, fromDate, toDate]);
+  }, [brandSlug, restaurantSlug, fromDate, toDate]);
 
   const load = useCallback(async (refreshOnly = false) => {
     if (refreshOnly) {

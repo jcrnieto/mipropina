@@ -1,9 +1,12 @@
 import {
   getRestaurantById,
   getRestaurantBySlug,
-  insertRestaurant,
+  getRestaurantByBrandSlugAndRestaurantSlug as getRestaurantRowByBrandAndRestaurantSlug,
   listRestaurantsByAuthUserId,
+  listRestaurantsByBrandId as listRestaurantsByBrandIdRepository,
+  listRestaurantsWithBrandByAuthUserId,
   patchRestaurantById,
+  insertRestaurant,
 } from "@/app/lib/server/modules/restaurants/restaurants.repository";
 import { getBrandByClerkId } from "@/app/lib/server/modules/brands/brands.service";
 import { getUsersMipropinaIdByClerkId } from "@/app/lib/server/modules/users/users.repository";
@@ -21,7 +24,7 @@ export async function getPrimaryRestaurantByClerkId(clerkUserId: string) {
 }
 
 export async function listRestaurantsByClerkId(clerkUserId: string) {
-  return listRestaurantsByAuthUserId(clerkUserId);
+  return listRestaurantsWithBrandByAuthUserId(clerkUserId);
 }
 
 export async function archiveRestaurantByClerkId(input: {
@@ -168,7 +171,9 @@ export async function setRestaurantImageByClerkId(input: SetRestaurantImageInput
       brand_id: existingPrimary.brand_id,
       image: input.imageUrl,
       brand_name: input.brandName?.trim() || existingPrimary.brand_name || "Mi restaurante",
-      slug: input.brandSlug?.trim() || existingPrimary.slug,
+      // Preserve the existing restaurant slug when updating the logo.
+      // The uploaded logo should not change the public URL segment.
+      slug: existingPrimary.slug,
       is_active: true,
     });
     return;
@@ -258,6 +263,49 @@ export async function getRestaurantByBrandSlug(brandSlug: string) {
   return getRestaurantBySlug(brandSlug);
 }
 
+export async function getRestaurantByBrandSlugAndRestaurantSlug(
+  brandSlug: string,
+  restaurantSlug: string,
+) {
+  return getRestaurantRowByBrandAndRestaurantSlug(brandSlug, restaurantSlug);
+}
+
+export async function listRestaurantsByBrandId(brandId: string) {
+  return listRestaurantsByBrandIdRepository(brandId);
+}
+
+export async function getPublicStoreInfoByBrandAndRestaurantSlug(
+  brandSlug: string,
+  restaurantSlug: string,
+): Promise<{
+  brandName: string | null;
+  branchName: string | null;
+  phone: string | null;
+  address: string | null;
+  image: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  tiktok: string | null;
+  brandPublicPath: string;
+} | null> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(brandSlug, restaurantSlug);
+  if (!restaurant) {
+    return null;
+  }
+
+  return {
+    brandName: restaurant.brand_name,
+    branchName: restaurant.branch_name,
+    phone: restaurant.phone,
+    address: restaurant.address,
+    image: restaurant.image,
+    instagram: restaurant.instagram,
+    facebook: restaurant.facebook,
+    tiktok: restaurant.tiktok,
+    brandPublicPath: restaurant.brands_mipropina?.[0]?.public_path ?? restaurant.brands_mipropina?.[0]?.slug ?? brandSlug,
+  };
+}
+
 export async function getRestaurantByClerkUserId(clerkUserId: string) {
   return getPrimaryRestaurantByClerkId(clerkUserId);
 }
@@ -316,8 +364,20 @@ export async function upsertOnboardingRestaurantByClerkId(input: {
   brandName: string;
   branchName: string;
   slug: string;
+  usersMipropinaId?: string | null;
 }): Promise<void> {
-  const usersMipropinaId = await getUsersMipropinaIdByClerkId(input.clerkUserId);
+  const usersMipropinaId =
+    input.usersMipropinaId ?? (await getUsersMipropinaIdByClerkId(input.clerkUserId));
+  
+  console.log("[restaurants.service] upsertOnboardingRestaurantByClerkId called", {
+    clerkUserId: input.clerkUserId,
+    brandId: input.brandId,
+    brandName: input.brandName,
+    branchName: input.branchName,
+    slug: input.slug,
+    usersMipropinaId,
+  });
+  
   if (!usersMipropinaId) {
     throw new Error("Cannot upsert onboarding restaurant without users_mipropina row");
   }
@@ -328,6 +388,11 @@ export async function upsertOnboardingRestaurantByClerkId(input: {
   }
 
   const existingBySlug = await getRestaurantBySlug(normalizedSlug);
+  console.log("[restaurants.service] Checked existing by slug", {
+    slug: normalizedSlug,
+    found: !!existingBySlug,
+  });
+  
   if (existingBySlug && existingBySlug.auth_user_id !== input.clerkUserId) {
     throw new Error("Ya existe un local con ese slug.");
   }
@@ -348,16 +413,37 @@ export async function upsertOnboardingRestaurantByClerkId(input: {
     is_active: true,
   };
 
+  console.log("[restaurants.service] Prepared payload for restaurant", {
+    payload,
+    existingBySlug: !!existingBySlug,
+  });
+
   if (existingBySlug) {
+    console.log("[restaurants.service] Patching existing restaurant", {
+      existingId: existingBySlug.id,
+    });
     await patchRestaurantById(existingBySlug.id, payload);
     return;
   }
 
   const existingPrimary = await getPrimaryRestaurantByClerkId(input.clerkUserId);
+  console.log("[restaurants.service] Checked existing primary", {
+    found: !!existingPrimary,
+    primaryId: existingPrimary?.id,
+  });
+  
   if (existingPrimary) {
+    console.log("[restaurants.service] Patching primary restaurant", {
+      primaryId: existingPrimary.id,
+    });
     await patchRestaurantById(existingPrimary.id, payload);
     return;
   }
 
-  await insertRestaurant(payload);
+  console.log("[restaurants.service] Calling insertRestaurant with payload", { payload });
+  const result = await insertRestaurant(payload);
+  console.log("[restaurants.service] Restaurant inserted successfully", {
+    restaurantId: result.id,
+    slug: result.slug,
+  });
 }

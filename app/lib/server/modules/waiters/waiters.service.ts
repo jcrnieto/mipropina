@@ -1,5 +1,6 @@
 import {
   getOwnerByBrandSlug,
+  getRestaurantByBrandSlugAndRestaurantSlug,
   getPrimaryRestaurantByClerkId,
 } from "@/app/lib/server/modules/restaurants/restaurants.service";
 import { getUsersMipropinaIdByClerkId } from "@/app/lib/server/modules/users/users.repository";
@@ -140,5 +141,32 @@ export async function getEmployeeByBrandSlugAndId(
   }
 
   const row = await getEmployeeByRestaurantIdAndEmployeeId(owner.restaurant_id, employeeId);
+  return row ? mapEmployeeRow(row) : null;
+}
+
+export async function listEmployeesByBrandAndRestaurantSlug(
+  brandSlug: string,
+  restaurantSlug: string,
+): Promise<WaiterResponseRow[]> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(brandSlug, restaurantSlug);
+  if (!restaurant) {
+    return [];
+  }
+
+  const rows = await listEmployeesByRestaurantId(restaurant.id);
+  return rows.map(mapEmployeeRow);
+}
+
+export async function getEmployeeByBrandAndRestaurantSlugAndId(
+  brandSlug: string,
+  restaurantSlug: string,
+  employeeId: string,
+): Promise<WaiterResponseRow | null> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(brandSlug, restaurantSlug);
+  if (!restaurant) {
+    return null;
+  }
+
+  const row = await getEmployeeByRestaurantIdAndEmployeeId(restaurant.id, employeeId);
   return row ? mapEmployeeRow(row) : null;
 }

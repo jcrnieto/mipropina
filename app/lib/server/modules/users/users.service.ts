@@ -69,7 +69,7 @@ function resolvePersonalNameParts(input: UpsertAppUserInput): {
   };
 }
 
-export async function upsertAppUser(input: UpsertAppUserInput): Promise<void> {
+export async function upsertAppUser(input: UpsertAppUserInput): Promise<string> {
   const payload = {
     email: input.email ?? null,
     profile_completed: input.onboardingComplete ?? false,
@@ -91,6 +91,7 @@ export async function upsertAppUser(input: UpsertAppUserInput): Promise<void> {
     hasLastName: Boolean(lastName),
     hasBrandName: Boolean(input.brandName?.trim()),
   });
+  return usersMipropinaId;
 }
 
 export async function deleteAppUserByClerkId(clerkUserId: string): Promise<void> {

@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest } from "next/server";
 import { getSupabaseAdminEnv } from "@/app/lib/server/supabase/client";
 import {
+  getActiveMenuByBrandAndRestaurantSlug,
   getActiveMenuByBrandSlug,
   getActiveMenuByClerkId,
   upsertMenuByClerkId,
@@ -52,7 +53,13 @@ export async function GET(req: Request) {
     }
 
     const brandSlug = new URL(req.url).searchParams.get("brandSlug");
-    const menu = brandSlug ? await getActiveMenuByBrandSlug(brandSlug) : await getActiveMenuByClerkId(userId);
+    const restaurantSlug = new URL(req.url).searchParams.get("restaurantSlug");
+    const menu =
+      brandSlug && restaurantSlug
+        ? await getActiveMenuByBrandAndRestaurantSlug(brandSlug, restaurantSlug)
+        : brandSlug
+          ? await getActiveMenuByBrandSlug(brandSlug)
+          : await getActiveMenuByClerkId(userId);
     return Response.json({
       ok: true,
       menu,
@@ -78,7 +85,9 @@ export async function POST(req: NextRequest) {
     }
 
     const metadata = (user.publicMetadata ?? {}) as Record<string, unknown>;
-    const requestBrandSlug = new URL(req.url).searchParams.get("brandSlug");
+    const { searchParams } = new URL(req.url);
+    const requestBrandSlug = searchParams.get("brandSlug");
+    const restaurantSlug = searchParams.get("restaurantSlug");
     const brandSlug = requestBrandSlug || readMetadataString(metadata, "brandSlug");
     if (!brandSlug) {
       return Response.json(
@@ -135,6 +144,7 @@ export async function POST(req: NextRequest) {
     const menu = await upsertMenuByClerkId({
       clerkUserId: userId,
       brandSlug,
+      restaurantSlug,
       fileUrl,
       filePath: objectPath,
       mimeType: file.type,

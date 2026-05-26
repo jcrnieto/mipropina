@@ -24,7 +24,7 @@ export default async function PublicStoreTipPage({ params, searchParams }: Publi
           <ChevronLeft className="h-4 w-4" />
           Volver
         </Link>
-        <WaitersCards brandSlug={brandSlug} mode="tip" />
+        <WaitersCards storePathPrefix={brandSlug} brandSlug={brandSlug} mode="tip" />
         <PublicStoreFooter />
       </div>
     </main>

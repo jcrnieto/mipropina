@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { auth } from "@clerk/nextjs/server";
 import {
+  getRatingConfigByBrandAndRestaurantSlug,
   getRatingConfigByBrandSlug,
   getRatingConfigByClerkId,
   upsertRatingConfigByClerkId,
@@ -25,7 +26,13 @@ export async function GET(req: Request) {
     }
 
     const brandSlug = new URL(req.url).searchParams.get("brandSlug");
-    const config = brandSlug ? await getRatingConfigByBrandSlug(brandSlug) : await getRatingConfigByClerkId(userId);
+    const restaurantSlug = new URL(req.url).searchParams.get("restaurantSlug");
+    const config =
+      brandSlug && restaurantSlug
+        ? await getRatingConfigByBrandAndRestaurantSlug(brandSlug, restaurantSlug)
+        : brandSlug
+          ? await getRatingConfigByBrandSlug(brandSlug)
+          : await getRatingConfigByClerkId(userId);
     return Response.json({
       ok: true,
       features: config?.features ?? [],
@@ -47,6 +54,7 @@ export async function PATCH(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const brandSlug = searchParams.get("brandSlug");
+    const restaurantSlug = searchParams.get("restaurantSlug");
     const body = (await req.json()) as RatingConfigPayload;
     const validation = validateRatingConfig({
       features: readFeatures(body.features),
@@ -62,6 +70,7 @@ export async function PATCH(req: Request) {
     const updated = await upsertRatingConfigByClerkId({
       clerkUserId: userId,
       brandSlug,
+      restaurantSlug,
       features: validation.values.features,
     });
 
@@ -76,5 +85,4 @@ export async function PATCH(req: Request) {
     );
   }
 }
-
 

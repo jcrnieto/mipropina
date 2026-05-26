@@ -4,10 +4,12 @@ import { BarChart3, ExternalLink, LineChart, Settings2, Star, Store, UserRoundCh
 type NavbarAdminProps = {
   brandSlug: string;
   brandName?: string;
+  storePath?: string;
 };
 
-function NavbarAdmin({ brandSlug, brandName }: NavbarAdminProps) {
+function NavbarAdmin({ brandSlug, brandName, storePath }: NavbarAdminProps) {
   const displayName = brandName?.trim() || "Tu restaurante";
+  const storeHref = storePath ? storePath : `/${brandSlug}`;
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#d9e0ef] bg-[#f6f9ff]/92 backdrop-blur">
@@ -25,7 +27,7 @@ function NavbarAdmin({ brandSlug, brandName }: NavbarAdminProps) {
           </div>
 
           <Link
-            href={`/${brandSlug}`}
+            href={storeHref}
             target="_blank"
             className="inline-flex items-center gap-1 rounded-lg border border-[#d6dfef] bg-white px-3 py-1.5 text-sm font-medium text-[#1c376f] transition hover:bg-[#f7f9ff]"
           >
@@ -37,7 +39,7 @@ function NavbarAdmin({ brandSlug, brandName }: NavbarAdminProps) {
         <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
           <nav className="flex min-w-max items-center gap-2 text-sm">
             <Link
-              href="/admin"
+              href={`/admin/${brandSlug}`}
               className="inline-flex items-center gap-1 rounded-full border border-[#d6dfef] bg-white px-3 py-1.5 text-[#2a477f] transition hover:bg-[#f7f9ff]"
             >
               <Building2 className="h-3.5 w-3.5" />
@@ -70,6 +72,13 @@ function NavbarAdmin({ brandSlug, brandName }: NavbarAdminProps) {
             >
               <Star className="h-3.5 w-3.5" />
               Reseñas
+            </a>
+            <a
+              href="#menu"
+              className="inline-flex items-center gap-1 rounded-full border border-[#d6dfef] bg-white px-3 py-1.5 text-[#2a477f] transition hover:bg-[#f7f9ff]"
+            >
+              <Store className="h-3.5 w-3.5" />
+              Carta
             </a>
             <a
               href="#foto"

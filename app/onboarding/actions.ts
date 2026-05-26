@@ -10,12 +10,9 @@ import {
   computeTrialWindow,
   createMercadoPagoSubscriptionCheckout,
 } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
-import { slugifyBrand } from "@/app/lib/brand";
-import {
-  sendSubscriptionPendingEmail,
-  sendTrialWelcomeEmail,
-} from "@/app/api/mail/service";
+import { sendSubscriptionPendingEmail, sendTrialWelcomeEmail } from "@/app/api/mail/service";
 import { validateOnboardingForm } from "../validations";
+import { slugifyBrand } from "@/app/lib/brand";
 
 type BillingMode = "trial" | "subscription";
 
@@ -61,11 +58,42 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
   const derivedBrandSlug = slugifyBrand(rawBrandName);
   const derivedRestaurantSlug = slugifyBrand(rawRestaurantName);
 
+  // Debug log to help identify why a slug might be empty in development
+  try {
+    console.log("[onboarding-debug] derivedSlugs", {
+      rawBrandName,
+      derivedBrandSlug,
+      rawRestaurantName,
+      derivedRestaurantSlug,
+    });
+  } catch (e) {
+    /* ignore */
+  }
+
+  // Fallback: if slugify produced an empty slug, build a permissive fallback
+  const safeBrandSlug =
+    derivedBrandSlug && derivedBrandSlug.length >= 2
+      ? derivedBrandSlug
+      : rawBrandName
+          .toLowerCase()
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "") || `marca-${Date.now().toString(36)}`;
+
+  const safeRestaurantSlug =
+    derivedRestaurantSlug && derivedRestaurantSlug.length >= 2
+      ? derivedRestaurantSlug
+      : rawRestaurantName
+          .toLowerCase()
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "") || `local-${Date.now().toString(36)}`;
+
   const validation = validateOnboardingForm({
     brandName: rawBrandName,
-    brandSlug: derivedBrandSlug,
+    brandSlug: safeBrandSlug,
     restaurantName: rawRestaurantName,
-    restaurantSlug: derivedRestaurantSlug,
+    restaurantSlug: safeRestaurantSlug,
   });
 
   if (!validation.isValid) {
@@ -77,33 +105,33 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
     redirect(`/onboarding?plan=${billingMode}&trialDays=${trialDays}&error=brand-slug`);
   }
 
-  const adminPath = "/admin";
-  const storePath = `/${restaurantSlug}`;
+  const adminPath = `/admin/${brandSlug}`;
+  const storePath = `/${brandSlug}/${restaurantSlug}`;
+
   const client = await clerkClient();
-  const clerkUser = await client.users.getUser(userId);
+  const clerkUser = await client.users.getUser(userId as string);
   const primaryEmail =
     clerkUser.emailAddresses.find((email) => email.id === clerkUser.primaryEmailAddressId)
       ?.emailAddress ??
     clerkUser.emailAddresses[0]?.emailAddress ??
     null;
-  const recipientName =
-    clerkUser.firstName || clerkUser.lastName || clerkUser.username || "Contacto Satix";
+  const recipientName = clerkUser.firstName || clerkUser.lastName || clerkUser.username || "Contacto Satix";
 
   const baseMetadata = {
     onboardingComplete: true,
     brandName,
-    brandSlug: restaurantSlug,
+    brandSlug,
     brandAccountSlug: brandSlug,
     restaurantName,
     adminPath,
     storePath,
   };
 
-  await upsertAppUser({
-    clerkUserId: userId,
+  const usersMipropinaId = await upsertAppUser({
+    clerkUserId: userId as string,
     email: primaryEmail,
     brandName,
-    brandSlug: restaurantSlug,
+    brandSlug,
     adminPath,
     storePath,
     onboardingComplete: true,
@@ -114,30 +142,53 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
   let brandId: string;
   try {
     const brand = await upsertBrandByClerkId({
-      clerkUserId: userId,
+      clerkUserId: userId as string,
       name: brandName,
       slug: brandSlug,
       adminPath,
-      publicPath: null,
+      publicPath: brandSlug,
       onboardingCompleted: true,
     });
 
     brandId = brand.id;
-    await upsertOnboardingRestaurantByClerkId({
-      clerkUserId: userId,
+    console.log("[onboarding] Brand created successfully", { brandId, brandSlug, traceId });
+    
+    const restaurantInput = {
+      clerkUserId: userId as string,
+      ...baseMetadata,
       brandId,
       brandName,
       branchName: restaurantName,
       slug: restaurantSlug,
+      usersMipropinaId,
+    };
+    console.log("[onboarding] About to call upsertOnboardingRestaurantByClerkId", { 
+      input: restaurantInput,
+      traceId 
+    });
+    
+    await upsertOnboardingRestaurantByClerkId(restaurantInput);
+    console.log("[onboarding] Restaurant created successfully", { 
+      restaurantSlug, 
+      brandId, 
+      traceId 
     });
   } catch (error) {
-    console.error("[onboarding] failed to persist brand/restaurant", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : "no stack";
+    console.error("[onboarding] failed to persist brand/restaurant", {
+      error: errorMessage,
+      stack: errorStack,
+      traceId,
+      brandSlug,
+      restaurantSlug,
+    });
     redirect(`/onboarding?plan=${billingMode}&trialDays=${trialDays}&error=brand-slug`);
   }
 
   if (billingMode === "trial") {
     const trialWindow = computeTrialWindow(trialDays);
-    await client.users.updateUserMetadata(userId, {
+    await client.users.updateUserMetadata(userId as string, {
       publicMetadata: {
         ...baseMetadata,
         brandId,
@@ -153,7 +204,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
 
     await upsertAccountSnapshotByBrandId({
       brandId,
-      clerkUserId: userId,
+      clerkUserId: userId as string,
       billingStatus: "trial_active",
       trialStartedAt: trialWindow.startedAtIso,
       trialEndsAt: trialWindow.endsAtIso,
@@ -176,7 +227,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
       }
     }
 
-    redirect("/admin");
+    redirect(adminPath);
   }
 
   if (!primaryEmail) {
@@ -187,7 +238,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
   try {
     checkout = await createMercadoPagoSubscriptionCheckout({
       brandId,
-      payerEmail: primaryEmail,
+      payerEmail: primaryEmail as string,
       reason: `Suscripcion MiPropina - ${brandName}`,
       amount: getSubscriptionAmount(),
       currencyId: "ARS",
@@ -199,7 +250,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
   }
 
   try {
-    await client.users.updateUserMetadata(userId, {
+    await client.users.updateUserMetadata(userId as string, {
       publicMetadata: {
         ...baseMetadata,
         brandId,
@@ -214,7 +265,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
     });
     await upsertAccountSnapshotByBrandId({
       brandId,
-      clerkUserId: userId,
+      clerkUserId: userId as string,
       billingStatus: "subscription_pending",
       trialStartedAt: null,
       trialEndsAt: null,
@@ -229,18 +280,17 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
     });
   }
 
-    if (primaryEmail) {
-      try {
-        await sendSubscriptionPendingEmail({
-          email: primaryEmail,
-          name: recipientName,
-          brandName,
-        });
-      } catch (error) {
-        console.error("[email] failed to send subscription pending email", error);
-      }
+  if (primaryEmail) {
+    try {
+      await sendSubscriptionPendingEmail({
+        email: primaryEmail,
+        name: recipientName,
+        brandName,
+      });
+    } catch (error) {
+      console.error("[email] failed to send subscription pending email", error);
     }
+  }
 
   redirect(checkout.checkoutUrl);
 }
-
