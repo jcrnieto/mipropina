@@ -1,6 +1,7 @@
 import {
   getRestaurantById,
   getRestaurantBySlug,
+  getRestaurantByBrandIdAndSlug,
   getRestaurantByBrandSlugAndRestaurantSlug as getRestaurantRowByBrandAndRestaurantSlug,
   listRestaurantsByAuthUserId,
   listRestaurantsByBrandId as listRestaurantsByBrandIdRepository,
@@ -336,7 +337,7 @@ export async function createRestaurantByClerkId(input: {
     throw new Error("El slug es obligatorio.");
   }
 
-  const existing = await getRestaurantBySlug(slug);
+  const existing = await getRestaurantByBrandIdAndSlug(brand.id, slug);
   if (existing) {
     throw new Error("Ya existe un restaurante con ese slug.");
   }
@@ -387,15 +388,12 @@ export async function upsertOnboardingRestaurantByClerkId(input: {
     throw new Error("El slug del local es obligatorio.");
   }
 
-  const existingBySlug = await getRestaurantBySlug(normalizedSlug);
-  console.log("[restaurants.service] Checked existing by slug", {
+  const existingBySlug = await getRestaurantByBrandIdAndSlug(input.brandId, normalizedSlug);
+  console.log("[restaurants.service] Checked existing by brand + slug", {
+    brandId: input.brandId,
     slug: normalizedSlug,
     found: !!existingBySlug,
   });
-  
-  if (existingBySlug && existingBySlug.auth_user_id !== input.clerkUserId) {
-    throw new Error("Ya existe un local con ese slug.");
-  }
 
   const payload = {
     brand_id: input.brandId,
@@ -421,6 +419,8 @@ export async function upsertOnboardingRestaurantByClerkId(input: {
   if (existingBySlug) {
     console.log("[restaurants.service] Patching existing restaurant", {
       existingId: existingBySlug.id,
+      previousAuthUserId: existingBySlug.auth_user_id,
+      nextAuthUserId: input.clerkUserId,
     });
     await patchRestaurantById(existingBySlug.id, payload);
     return;

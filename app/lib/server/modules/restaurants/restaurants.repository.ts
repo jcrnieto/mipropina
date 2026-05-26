@@ -207,6 +207,26 @@ export async function getRestaurantBySlug(slug: string): Promise<RestaurantRow |
   return rows[0] ?? null;
 }
 
+export async function getRestaurantByBrandIdAndSlug(
+  brandId: string,
+  slug: string,
+): Promise<RestaurantRow | null> {
+  const encodedBrandId = encodeURIComponent(brandId);
+  const encodedSlug = encodeURIComponent(slug);
+  const response = await supabaseRestRequest(
+    `/rest/v1/restaurants_mipropina?brand_id=eq.${encodedBrandId}&slug=eq.${encodedSlug}&select=${RESTAURANT_SELECT}&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        Prefer: "return=representation",
+      },
+    },
+  );
+
+  const rows = (await response.json()) as RestaurantRow[];
+  return rows[0] ?? null;
+}
+
 export async function getRestaurantById(restaurantId: string): Promise<RestaurantRow | null> {
   const encodedId = encodeURIComponent(restaurantId);
   const response = await supabaseRestRequest(

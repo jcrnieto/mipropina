@@ -183,7 +183,11 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
       brandSlug,
       restaurantSlug,
     });
-    const reason = /Ya existe una marca|Ya existe un local/i.test(errorMessage) ? "brand-taken" : "brand-slug";
+    const reason = /Ya existe una marca/i.test(errorMessage)
+      ? "brand-taken"
+      : /Ya existe un local|Ya existe un restaurante|restaurants_mipropina|restaurant/i.test(errorMessage)
+        ? "restaurant-taken"
+        : "brand-slug";
     redirect(`/onboarding?plan=${billingMode}&trialDays=${trialDays}&error=${reason}`);
   }
 

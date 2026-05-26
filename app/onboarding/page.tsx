@@ -47,6 +47,8 @@ function resolveErrorMessage(errorRaw: string | undefined): string | null {
       return "No pudimos generar la ruta de tu marca. Proba con otro nombre.";
     case "brand-taken":
       return "Esa ruta de marca ya esta en uso. Proba con otro nombre o borra los datos anteriores de esa cuenta.";
+    case "restaurant-taken":
+      return "Esa ruta de local ya esta en uso para esta marca. Proba con otro nombre de local.";
     case "missing-email":
       return "No encontramos un email principal en tu cuenta para iniciar la suscripcion.";
     case "mercadopago":
