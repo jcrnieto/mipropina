@@ -37,6 +37,16 @@ async function deleteRowsByAuthUserId(table: string, clerkUserId: string): Promi
   });
 }
 
+async function deleteBrandsByOwnerAuthUserId(clerkUserId: string): Promise<void> {
+  const encodedId = encodeURIComponent(clerkUserId);
+  await supabaseRestRequest(`/rest/v1/brands_mipropina?owner_auth_user_id=eq.${encodedId}`, {
+    method: "DELETE",
+    headers: {
+      Prefer: "return=minimal",
+    },
+  });
+}
+
 function isClerkNotFoundError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const maybe = error as { status?: number; errors?: Array<{ code?: string }> };
@@ -87,6 +97,7 @@ async function handleDeleteUser(req: Request, allowQueryParam: boolean) {
     for (const table of tables) {
       await deleteRowsByAuthUserId(table, clerkUserId);
     }
+    await deleteBrandsByOwnerAuthUserId(clerkUserId);
 
     let clerkDeleted = true;
     try {

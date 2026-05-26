@@ -5,7 +5,7 @@ import {
   getBillingSnapshotByBrandId,
   upsertAccountSnapshotByBrandId,
 } from "@/app/lib/server/modules/account/account.service";
-import { getBrandByClerkId } from "@/app/lib/server/modules/brands/brands.service";
+import { getBrandByClerkId, getBrandById } from "@/app/lib/server/modules/brands/brands.service";
 import { upsertAppUser } from "@/app/lib/server/modules/users/users.service";
 import {
   type BillingStatus,
@@ -90,7 +90,23 @@ export async function resolveOnboardingDataForUser(user: ClerkUser): Promise<Onb
   const onboarding = getOnboardingDataFromUser(user);
   const brand = await getBrandByClerkId(user.id);
   if (!brand) {
-    return onboarding;
+    if (!onboarding.brandId) {
+      return onboarding;
+    }
+
+    const metadataBrand = await getBrandById(onboarding.brandId);
+    if (metadataBrand?.owner_auth_user_id === user.id) {
+      return onboarding;
+    }
+
+    return {
+      onboardingComplete: false,
+      firstName: onboarding.firstName,
+      lastName: onboarding.lastName,
+      fullName: onboarding.fullName,
+      phone: onboarding.phone,
+      address: onboarding.address,
+    };
   }
 
   const adminPath = `/admin/${brand.slug}`;

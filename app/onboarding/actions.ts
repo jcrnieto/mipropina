@@ -183,7 +183,8 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
       brandSlug,
       restaurantSlug,
     });
-    redirect(`/onboarding?plan=${billingMode}&trialDays=${trialDays}&error=brand-slug`);
+    const reason = /Ya existe una marca|Ya existe un local/i.test(errorMessage) ? "brand-taken" : "brand-slug";
+    redirect(`/onboarding?plan=${billingMode}&trialDays=${trialDays}&error=${reason}`);
   }
 
   if (billingMode === "trial") {
