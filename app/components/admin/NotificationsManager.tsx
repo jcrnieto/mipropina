@@ -6,9 +6,11 @@ import { Bell, Save } from "lucide-react";
 export function NotificationsManager({
   brandSlug,
   restaurantSlug,
+  externalId,
 }: {
   brandSlug: string;
   restaurantSlug: string;
+  externalId: string;
 }) {
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +52,9 @@ export function NotificationsManager({
             return;
           }
 
+          await oneSignal.login(externalId);
           await oneSignal.Slidedown.promptPush();
+          await oneSignal.login(externalId);
           resolve();
         } catch (promptError) {
           reject(promptError);

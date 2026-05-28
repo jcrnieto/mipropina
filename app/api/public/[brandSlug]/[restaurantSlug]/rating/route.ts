@@ -120,14 +120,15 @@ export async function POST(req: Request, { params }: RouteProps) {
       entryType: hasWaiterContext ? "waiter_qr" : "general",
     });
 
+    const notificationScores = waiterServiceStars === null ? starsInput : [...starsInput, waiterServiceStars];
     const notificationTarget =
-      starsInput.length > 0 && shouldNotifyLowRating(starsInput)
+      notificationScores.length > 0 && shouldNotifyLowRating(notificationScores)
         ? await getRestaurantNotificationTarget({ brandSlug, restaurantSlug })
         : null;
     if (notificationTarget?.enabled) {
       const storeInfo = await getPublicStoreInfoByBrandAndRestaurantSlug(brandSlug, restaurantSlug);
-      const averageStars = starsInput.reduce((sum, item) => sum + item, 0) / starsInput.length;
-      const lowestStars = Math.min(...starsInput);
+      const averageStars = notificationScores.reduce((sum, item) => sum + item, 0) / notificationScores.length;
+      const lowestStars = Math.min(...notificationScores);
       const brandName = storeInfo?.brandName?.trim() || brandSlug;
 
       try {

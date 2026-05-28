@@ -126,10 +126,10 @@ export function shouldNotifyLowRating(starsInput: number[]): boolean {
 
   const avgThresholdRaw = readEnvString("LOW_RATING_ALERT_AVG_THRESHOLD");
   const minThresholdRaw = readEnvString("LOW_RATING_ALERT_MIN_STAR_THRESHOLD");
-  const avgThreshold = Number(avgThresholdRaw ?? "2");
-  const minThreshold = Number(minThresholdRaw ?? "1");
-  const safeAvgThreshold = Number.isFinite(avgThreshold) ? avgThreshold : 2;
-  const safeMinThreshold = Number.isFinite(minThreshold) ? minThreshold : 1;
+  const avgThreshold = Number(avgThresholdRaw ?? "3");
+  const minThreshold = Number(minThresholdRaw ?? "3");
+  const safeAvgThreshold = Number.isFinite(avgThreshold) ? avgThreshold : 3;
+  const safeMinThreshold = Number.isFinite(minThreshold) ? minThreshold : 3;
   const average = starsInput.reduce((sum, current) => sum + current, 0) / starsInput.length;
   const minimum = Math.min(...starsInput);
 

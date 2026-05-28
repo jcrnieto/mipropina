@@ -121,7 +121,7 @@ export default async function RestaurantAdminPage({ params }: Props) {
         </section>
 
         <section id="notificaciones">
-          <NotificationsManager brandSlug={brandSlug} restaurantSlug={restaurant.slug} />
+          <NotificationsManager brandSlug={brandSlug} restaurantSlug={restaurant.slug} externalId={user.id} />
         </section>
 
         <section id="analytics">
