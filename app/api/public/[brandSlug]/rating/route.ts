@@ -8,7 +8,8 @@ import {
   sendWhatsAppLowRatingAlert,
   shouldNotifyLowRating,
 } from "@/app/lib/server/modules/notifications/whatsapp.service";
-import { shouldSendRestaurantNotification } from "@/app/lib/server/modules/notifications/notifications-config.service";
+import { getRestaurantNotificationTarget } from "@/app/lib/server/modules/notifications/notifications-config.service";
+import { sendOneSignalLowRatingAlert } from "@/app/lib/server/modules/notifications/onesignal.service";
 
 type RouteProps = {
   params: Promise<{ brandSlug: string }>;
@@ -115,20 +116,35 @@ export async function POST(req: Request, { params }: RouteProps) {
       entryType: hasWaiterContext ? "waiter_qr" : "general",
     });
 
-    const shouldNotify =
-      starsInput.length > 0 &&
-      shouldNotifyLowRating(starsInput) &&
-      (await shouldSendRestaurantNotification({ brandSlug }));
-    if (shouldNotify) {
+    const notificationTarget =
+      starsInput.length > 0 && shouldNotifyLowRating(starsInput)
+        ? await getRestaurantNotificationTarget({ brandSlug })
+        : null;
+    if (notificationTarget?.enabled) {
+      const storeInfo = await getPublicStoreInfoByBrandSlug(brandSlug);
+      const averageStars = starsInput.reduce((sum, item) => sum + item, 0) / starsInput.length;
+      const lowestStars = Math.min(...starsInput);
+      const brandName = storeInfo?.brand_name?.trim() || brandSlug;
+
       try {
-        const storeInfo = await getPublicStoreInfoByBrandSlug(brandSlug);
+        await sendOneSignalLowRatingAlert({
+          ownerAuthUserId: notificationTarget.authUserId,
+          brandName,
+          brandSlug,
+          averageStars,
+          lowestStars,
+          comment,
+        });
+      } catch (notificationError) {
+        console.error("[rating-alert][onesignal] notification failed", notificationError);
+      }
+
+      try {
         const ownerPhone = storeInfo?.phone?.trim() || "";
         if (ownerPhone) {
-          const averageStars = starsInput.reduce((sum, item) => sum + item, 0) / starsInput.length;
-          const lowestStars = Math.min(...starsInput);
           await sendWhatsAppLowRatingAlert({
             ownerPhone,
-            brandName: storeInfo?.brand_name?.trim() || brandSlug,
+            brandName,
             brandSlug,
             averageStars,
             lowestStars,
@@ -148,4 +164,3 @@ export async function POST(req: Request, { params }: RouteProps) {
     );
   }
 }
-

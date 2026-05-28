@@ -16,6 +16,57 @@ export function NotificationsManager({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const ensureBrowserPushPermission = async (): Promise<boolean> => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    if (!("Notification" in window)) {
+      setError("Este navegador no soporta notificaciones web.");
+      return false;
+    }
+
+    if (window.Notification.permission === "granted") {
+      return true;
+    }
+
+    if (window.Notification.permission === "denied") {
+      setError("El navegador tiene bloqueadas las notificaciones para este sitio.");
+      return false;
+    }
+
+    const queue = window.OneSignalDeferred;
+    if (!queue) {
+      setError("OneSignal todavia se esta cargando. Espera unos segundos y volve a intentarlo.");
+      return false;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      queue.push(async (oneSignal) => {
+        try {
+          if (!oneSignal.Notifications.isPushSupported()) {
+            setError("Este navegador no soporta notificaciones push.");
+            resolve();
+            return;
+          }
+
+          await oneSignal.Slidedown.promptPush();
+          resolve();
+        } catch (promptError) {
+          reject(promptError);
+        }
+      });
+    });
+
+    const updatedPermission = window.Notification.permission as NotificationPermission;
+    if (updatedPermission !== "granted") {
+      setError("No se activo el permiso del navegador. Sin ese permiso no podemos enviarte alertas.");
+      return false;
+    }
+
+    return true;
+  };
+
   useEffect(() => {
     let isMounted = true;
     const query = new URLSearchParams({ brandSlug, restaurantSlug });
@@ -63,13 +114,21 @@ export function NotificationsManager({
     setSuccess(null);
 
     try {
+      const nextEnabled = !isEnabled;
+      if (nextEnabled) {
+        const hasBrowserPermission = await ensureBrowserPushPermission();
+        if (!hasBrowserPermission) {
+          return;
+        }
+      }
+
       const query = new URLSearchParams({ brandSlug, restaurantSlug });
       const response = await fetch(`/api/admin/notifications-config?${query.toString()}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ enabled: !isEnabled }),
+        body: JSON.stringify({ enabled: nextEnabled }),
       });
 
       const json = (await response.json()) as {

@@ -14,6 +14,10 @@ type RestaurantNotificationContext = {
   authUserId: string;
 };
 
+export type RestaurantNotificationTarget = RestaurantNotificationContext & {
+  enabled: boolean;
+};
+
 function readBooleanMap(value: unknown): Record<string, boolean> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
@@ -115,12 +119,23 @@ export async function shouldSendRestaurantNotification(input: {
   brandSlug: string;
   restaurantSlug?: string | null;
 }): Promise<boolean> {
+  const target = await getRestaurantNotificationTarget(input);
+  return target?.enabled ?? false;
+}
+
+export async function getRestaurantNotificationTarget(input: {
+  brandSlug: string;
+  restaurantSlug?: string | null;
+}): Promise<RestaurantNotificationTarget | null> {
   const context = await resolveRestaurantContext(input);
   if (!context) {
-    return false;
+    return null;
   }
 
   const metadata = (await getUserPublicMetadata(context.authUserId)) as NotificationMetadata;
   const byRestaurant = readBooleanMap(metadata.notificationsByRestaurant);
-  return byRestaurant[context.restaurantId] ?? readLegacyEnabled(metadata);
+  return {
+    ...context,
+    enabled: byRestaurant[context.restaurantId] ?? readLegacyEnabled(metadata),
+  };
 }
