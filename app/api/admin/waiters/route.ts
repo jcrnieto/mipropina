@@ -1,7 +1,10 @@
 export const runtime = "nodejs";
 
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { createEmployeeByClerkId, listEmployeesByClerkId } from "@/app/lib/server/modules/waiters/waiters.service";
+import { auth } from "@clerk/nextjs/server";
+import {
+  createEmployeeByClerkIdAndRestaurantSlug,
+  listEmployeesByClerkIdAndRestaurantSlug,
+} from "@/app/lib/server/modules/waiters/waiters.service";
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "mipropina";
 
@@ -32,11 +35,6 @@ function getSupabaseAdminEnv() {
   };
 }
 
-function readMetadataString(metadata: Record<string, unknown>, key: string): string | null {
-  const value = metadata[key];
-  return typeof value === "string" && value.length > 0 ? value : null;
-}
-
 function readRequiredString(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -53,6 +51,11 @@ function readOptionalString(value: unknown): string | null {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function readRequiredSearchParam(req: Request, key: string): string | null {
+  const value = new URL(req.url).searchParams.get(key);
+  return readRequiredString(value);
 }
 
 function isMercadoPagoLink(url: string): boolean {
@@ -135,6 +138,12 @@ export async function POST(req: Request) {
       return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    const brandSlug = readRequiredSearchParam(req, "brandSlug");
+    const restaurantSlug = readRequiredSearchParam(req, "restaurantSlug");
+    if (!brandSlug || !restaurantSlug) {
+      return Response.json({ ok: false, error: "brandSlug y restaurantSlug son requeridos." }, { status: 400 });
+    }
+
     const body = (await req.json()) as WaiterPayload;
     const name = readRequiredString(body.name);
     const lastName = readRequiredString(body.lastName);
@@ -156,25 +165,16 @@ export async function POST(req: Request) {
 
     let imageUrl: string | null = null;
     if (imageDataUrl) {
-      const user = await currentUser();
-      const metadata = (user?.publicMetadata ?? {}) as Record<string, unknown>;
-      const brandSlug = readMetadataString(metadata, "brandSlug");
-
-      if (!brandSlug) {
-        return Response.json(
-          { ok: false, error: "No se encontro brandSlug para guardar la foto del mozo." },
-          { status: 400 },
-        );
-      }
-
       imageUrl = await uploadEmployeeImage({
         brandSlug,
         imageDataUrl,
       });
     }
 
-    const created = await createEmployeeByClerkId({
+    const created = await createEmployeeByClerkIdAndRestaurantSlug({
       clerkUserId: userId,
+      brandSlug,
+      restaurantSlug,
       name,
       lastName,
       dni,
@@ -203,14 +203,24 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const { userId } = await auth();
     if (!userId) {
       return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const employees = await listEmployeesByClerkId(userId);
+    const brandSlug = readRequiredSearchParam(req, "brandSlug");
+    const restaurantSlug = readRequiredSearchParam(req, "restaurantSlug");
+    if (!brandSlug || !restaurantSlug) {
+      return Response.json({ ok: false, error: "brandSlug y restaurantSlug son requeridos." }, { status: 400 });
+    }
+
+    const employees = await listEmployeesByClerkIdAndRestaurantSlug({
+      clerkUserId: userId,
+      brandSlug,
+      restaurantSlug,
+    });
     return Response.json({
       ok: true,
       waiters: employees.map((employee) => ({
@@ -230,5 +240,3 @@ export async function GET() {
     );
   }
 }
-
-

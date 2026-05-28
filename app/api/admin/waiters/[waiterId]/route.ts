@@ -1,7 +1,10 @@
 export const runtime = "nodejs";
 
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { deleteEmployeeByClerkId, updateEmployeeByClerkId } from "@/app/lib/server/modules/waiters/waiters.service";
+import { auth } from "@clerk/nextjs/server";
+import {
+  deleteEmployeeByClerkIdAndRestaurantSlug,
+  updateEmployeeByClerkIdAndRestaurantSlug,
+} from "@/app/lib/server/modules/waiters/waiters.service";
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "mipropina";
 
@@ -36,11 +39,6 @@ function getSupabaseAdminEnv() {
   };
 }
 
-function readMetadataString(metadata: Record<string, unknown>, key: string): string | null {
-  const value = metadata[key];
-  return typeof value === "string" && value.length > 0 ? value : null;
-}
-
 function readRequiredString(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -57,6 +55,11 @@ function readOptionalString(value: unknown): string | null {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function readRequiredSearchParam(req: Request, key: string): string | null {
+  const value = new URL(req.url).searchParams.get(key);
+  return readRequiredString(value);
 }
 
 function isMercadoPagoLink(url: string): boolean {
@@ -144,7 +147,18 @@ export async function DELETE(_: Request, { params }: RouteProps) {
       return Response.json({ ok: false, error: "waiterId is required" }, { status: 400 });
     }
 
-    await deleteEmployeeByClerkId(userId, waiterId);
+    const brandSlug = readRequiredSearchParam(_, "brandSlug");
+    const restaurantSlug = readRequiredSearchParam(_, "restaurantSlug");
+    if (!brandSlug || !restaurantSlug) {
+      return Response.json({ ok: false, error: "brandSlug y restaurantSlug son requeridos." }, { status: 400 });
+    }
+
+    await deleteEmployeeByClerkIdAndRestaurantSlug({
+      clerkUserId: userId,
+      brandSlug,
+      restaurantSlug,
+      employeeId: waiterId,
+    });
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json(
@@ -164,6 +178,12 @@ export async function PATCH(req: Request, { params }: RouteProps) {
     const { waiterId } = await params;
     if (!waiterId) {
       return Response.json({ ok: false, error: "waiterId is required" }, { status: 400 });
+    }
+
+    const brandSlug = readRequiredSearchParam(req, "brandSlug");
+    const restaurantSlug = readRequiredSearchParam(req, "restaurantSlug");
+    if (!brandSlug || !restaurantSlug) {
+      return Response.json({ ok: false, error: "brandSlug y restaurantSlug son requeridos." }, { status: 400 });
     }
 
     const body = (await req.json()) as WaiterPayload;
@@ -187,25 +207,16 @@ export async function PATCH(req: Request, { params }: RouteProps) {
 
     let imageUrl: string | null = imageInput;
     if (imageInput?.startsWith("data:image/")) {
-      const user = await currentUser();
-      const metadata = (user?.publicMetadata ?? {}) as Record<string, unknown>;
-      const brandSlug = readMetadataString(metadata, "brandSlug");
-
-      if (!brandSlug) {
-        return Response.json(
-          { ok: false, error: "No se encontro brandSlug para guardar la foto del mozo." },
-          { status: 400 },
-        );
-      }
-
       imageUrl = await uploadEmployeeImage({
         brandSlug,
         imageDataUrl: imageInput,
       });
     }
 
-    const updated = await updateEmployeeByClerkId({
+    const updated = await updateEmployeeByClerkIdAndRestaurantSlug({
       clerkUserId: userId,
+      brandSlug,
+      restaurantSlug,
       employeeId: waiterId,
       name,
       lastName,
@@ -234,5 +245,3 @@ export async function PATCH(req: Request, { params }: RouteProps) {
     );
   }
 }
-
-

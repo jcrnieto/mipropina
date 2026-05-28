@@ -14,6 +14,7 @@ export type RestaurantRow = {
   instagram: string | null;
   facebook: string | null;
   tiktok: string | null;
+  general_tip_link: string | null;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
@@ -32,11 +33,12 @@ export type RestaurantInsertPayload = {
   instagram: string | null;
   facebook: string | null;
   tiktok: string | null;
+  general_tip_link?: string | null;
   is_active?: boolean;
 };
 
 const RESTAURANT_SELECT =
-  "id,brand_id,user_id,auth_user_id,brand_name,branch_name,slug,phone,address,image,instagram,facebook,tiktok,is_active,created_at,updated_at";
+  "id,brand_id,user_id,auth_user_id,brand_name,branch_name,slug,phone,address,image,instagram,facebook,tiktok,general_tip_link,is_active,created_at,updated_at";
 
 const RESTAURANT_WITH_BRAND_SELECT =
   `${RESTAURANT_SELECT},brands_mipropina(slug,public_path)`;

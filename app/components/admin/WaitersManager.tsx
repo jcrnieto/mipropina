@@ -8,6 +8,8 @@ import { Waiter } from "./waiters.types";
 type WaiterForm = Omit<Waiter, "id" | "photo">;
 
 type WaitersManagerProps = {
+  brandSlug: string;
+  restaurantSlug: string;
   onCreated: (waiter: Waiter) => void;
   onUpdated: (waiter: Waiter) => void;
   editingWaiter: Waiter | null;
@@ -40,6 +42,8 @@ function isMercadoPagoLink(url: string) {
 }
 
 export function WaitersManager({
+  brandSlug,
+  restaurantSlug,
   onCreated,
   onUpdated,
   editingWaiter,
@@ -112,7 +116,10 @@ export function WaitersManager({
     setIsSubmitting(true);
 
     try {
-      const endpoint = isEditing ? `/api/admin/waiters/${editingWaiter!.id}` : "/api/admin/waiters";
+      const params = new URLSearchParams({ brandSlug, restaurantSlug });
+      const endpoint = isEditing
+        ? `/api/admin/waiters/${editingWaiter!.id}?${params.toString()}`
+        : `/api/admin/waiters?${params.toString()}`;
       const method = isEditing ? "PATCH" : "POST";
 
       const response = await fetch(endpoint, {

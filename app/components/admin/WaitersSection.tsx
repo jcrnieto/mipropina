@@ -1,21 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { WaitersList } from "./WaitersList";
 import { WaitersManager } from "./WaitersManager";
 import { Waiter } from "./waiters.types";
 
-export function WaitersSection({ brandSlug }: { brandSlug: string }) {
+type WaitersSectionProps = {
+  brandSlug: string;
+  restaurantSlug: string;
+};
+
+export function WaitersSection({ brandSlug, restaurantSlug }: WaitersSectionProps) {
   const [waiters, setWaiters] = useState<Waiter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingWaiter, setEditingWaiter] = useState<Waiter | null>(null);
 
-  const loadWaiters = async () => {
+  const loadWaiters = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch("/api/admin/waiters", { method: "GET", cache: "no-store" });
+      const params = new URLSearchParams({ brandSlug, restaurantSlug });
+      const response = await fetch(`/api/admin/waiters?${params.toString()}`, { method: "GET", cache: "no-store" });
       const json = (await response.json()) as {
         ok: boolean;
         waiters?: Waiter[];
@@ -32,11 +38,11 @@ export function WaitersSection({ brandSlug }: { brandSlug: string }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [brandSlug, restaurantSlug]);
 
   useEffect(() => {
     void loadWaiters();
-  }, []);
+  }, [loadWaiters]);
 
   const handleCreated = (waiter: Waiter) => {
     setWaiters((previous) => [waiter, ...previous]);
@@ -61,7 +67,8 @@ export function WaitersSection({ brandSlug }: { brandSlug: string }) {
     setDeletingId(id);
     setError(null);
     try {
-      const response = await fetch(`/api/admin/waiters/${id}`, {
+      const params = new URLSearchParams({ brandSlug, restaurantSlug });
+      const response = await fetch(`/api/admin/waiters/${id}?${params.toString()}`, {
         method: "DELETE",
       });
       const json = (await response.json()) as {
@@ -91,10 +98,13 @@ export function WaitersSection({ brandSlug }: { brandSlug: string }) {
         onUpdated={handleUpdated}
         editingWaiter={editingWaiter}
         onCancelEdit={handleCancelEdit}
+        brandSlug={brandSlug}
+        restaurantSlug={restaurantSlug}
       />
       <div className="mt-6">
         <WaitersList
           brandSlug={brandSlug}
+          restaurantSlug={restaurantSlug}
           waiters={waiters}
           isLoading={isLoading}
           error={error}
@@ -106,4 +116,3 @@ export function WaitersSection({ brandSlug }: { brandSlug: string }) {
     </>
   );
 }
-

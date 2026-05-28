@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
 import Image from "next/image";
-import { ArrowRight, CreditCard, MapPin, Phone, Search, Send, Star } from "lucide-react";
+import { CreditCard, MapPin, Phone, Send, Star } from "lucide-react";
 import WaiterModal from "./WaiterModal";
 
 type Waiter = {
@@ -22,6 +21,7 @@ type StoreInfo = {
   phone: string | null;
   address: string | null;
   logo: string | null;
+  generalTipLink: string | null;
 };
 
 type WaitersCardsProps = {
@@ -29,12 +29,6 @@ type WaitersCardsProps = {
   brandSlug: string;
   mode?: "all" | "tip" | "review";
 };
-
-function getInitials(waiter: Waiter): string {
-  const a = waiter.firstName.trim().charAt(0).toUpperCase();
-  const b = waiter.lastName.trim().charAt(0).toUpperCase();
-  return `${a}${b}`.trim() || "M";
-}
 
 function formatBrandName(brandSlug: string): string {
   return brandSlug
@@ -49,6 +43,7 @@ const EMPTY_STORE: StoreInfo = {
   phone: null,
   address: null,
   logo: null,
+  generalTipLink: null,
 };
 
 const RATING_LABELS: Record<number, string> = {
@@ -123,11 +118,9 @@ function getRatingVisual(score: number): RatingVisual {
 export function WaitersCards({ storePathPrefix, brandSlug, mode = "all" }: WaitersCardsProps) {
   const searchParams = useSearchParams();
   const waiterIdFromQuery = searchParams.get("waiter");
-  const [waiters, setWaiters] = useState<Waiter[]>([]);
   const [store, setStore] = useState<StoreInfo>(EMPTY_STORE);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [ratingFeatures, setRatingFeatures] = useState<string[]>([]);
   const [stars, setStars] = useState<number[]>([]);
   const [comment, setComment] = useState("");
@@ -170,7 +163,6 @@ export function WaitersCards({ storePathPrefix, brandSlug, mode = "all" }: Waite
           setStore(json.store ?? EMPTY_STORE);
           setRatingFeatures(loadedFeatures);
           setStars(loadedFeatures.map(() => 0));
-          setWaiters(loadedWaiters);
           setSelectedWaiter(matchedWaiter);
         }
       } catch (loadError) {
@@ -194,25 +186,18 @@ export function WaitersCards({ storePathPrefix, brandSlug, mode = "all" }: Waite
     () => store.brandName?.trim() || formatBrandName(brandSlug),
     [store.brandName, brandSlug],
   );
-  const filteredWaiters = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return waiters;
-
-    return waiters.filter((waiter) => {
-      const fullName = `${waiter.firstName} ${waiter.lastName}`.toLowerCase();
-      return fullName.includes(term);
-    });
-  }, [waiters, search]);
-
   const hasWaiterContext = Boolean(selectedWaiter);
   const hasRatingConfig = ratingFeatures.length > 0;
   const showRatingSection = mode !== "tip" && (hasRatingConfig || hasWaiterContext);
   const showTipSection = mode !== "review";
+  const hasWaiterQr = Boolean(waiterIdFromQuery);
   const isWaiterLocked = Boolean(waiterIdFromQuery && selectedWaiter);
+  const isUnknownWaiterQr = Boolean(waiterIdFromQuery && !selectedWaiter && !isLoading && !error);
   const hasValidFeatureScores =
     ratingFeatures.length === 0 || (stars.length === ratingFeatures.length && stars.every((value) => value >= 1 && value <= 5));
   const hasValidWaiterScore = !hasWaiterContext || (waiterServiceStars >= 1 && waiterServiceStars <= 5);
   const canSubmitRating = (hasRatingConfig || hasWaiterContext) && hasValidFeatureScores && hasValidWaiterScore;
+  const hasGeneralTipLink = Boolean(store.generalTipLink);
 
   const submitRating = async () => {
     if (!canSubmitRating) {
@@ -256,6 +241,11 @@ export function WaitersCards({ storePathPrefix, brandSlug, mode = "all" }: Waite
     } finally {
       setIsSubmittingRating(false);
     }
+  };
+
+  const openGeneralTipLink = () => {
+    if (!store.generalTipLink) return;
+    window.open(store.generalTipLink, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -418,103 +408,39 @@ export function WaitersCards({ storePathPrefix, brandSlug, mode = "all" }: Waite
         {showTipSection ? (
           <div className="mt-4 flex flex-1 flex-col">
             <div className="rounded-2xl border border-[#cfd7e6] bg-white/80 p-5">
-              <p className="text-sm text-[#64748b]">Mozo seleccionado</p>
+              <p className="text-sm text-[#64748b]">{hasWaiterQr ? "Mozo seleccionado" : "Propina"}</p>
               <p className="mt-1 text-xl font-semibold text-[#1f2937]">
-                {selectedWaiter ? `${selectedWaiter.firstName} ${selectedWaiter.lastName}` : "-"}
+                {selectedWaiter
+                  ? `${selectedWaiter.firstName} ${selectedWaiter.lastName}`
+                  : hasWaiterQr
+                    ? "Mozo no encontrado"
+                    : "Propina general"}
               </p>
               <p className="mt-2 text-sm text-[#6b7280]">
                 {isWaiterLocked
                   ? "Este QR ya esta asociado a este mozo. Continua con el boton de pago."
-                  : "Elegi un mozo de la lista y confirma desde el boton de pago."}
+                  : isUnknownWaiterQr
+                    ? "No encontramos el mozo asociado a este QR."
+                    : hasGeneralTipLink
+                    ? "Deja una propina general para el equipo del local."
+                    : "Este local todavia no cargo un link de propina general."}
               </p>
             </div>
 
-            {!isWaiterLocked ? (
-              <div className="mt-3 space-y-3">
-                <div className="space-y-3">
-                  {isLoading ? <p className="text-center text-sm text-[#6b7280]">Cargando mozos...</p> : null}
-                  {error ? <p className="text-center text-sm text-red-700">{error}</p> : null}
-
-                  {!isLoading && !error && waiters.length > 0 ? (
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b8ba8]" />
-                      <input
-                        type="search"
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Buscar mozo por nombre"
-                        className="h-11 w-full rounded-2xl border border-[#cfd7e6] bg-white pl-10 pr-3 text-sm text-[#1f2937] outline-none transition focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
-                      />
-                    </div>
-                  ) : null}
-
-                  {!isLoading && !error && waiters.length === 0 ? (
-                    <p className="rounded-2xl border border-[#d6deea] bg-white px-4 py-5 text-center text-sm text-[#6b7280]">
-                      Este restaurante todavia no cargo mozos.
-                    </p>
-                  ) : null}
-
-                  {!isLoading && !error && waiters.length > 0 && filteredWaiters.length === 0 ? (
-                    <p className="rounded-2xl border border-[#d6deea] bg-white px-4 py-5 text-center text-sm text-[#6b7280]">
-                      No encontramos mozos con ese nombre.
-                    </p>
-                  ) : null}
-
-                  {!isLoading && !error && filteredWaiters.length > 0
-                    ? filteredWaiters.map((waiter, index) => {
-                        const isActive = selectedWaiter?.id === waiter.id;
-                        return (
-                          <motion.button
-                            key={waiter.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedWaiter(waiter);
-                              setModalWaiter(waiter);
-                            }}
-                            initial={{ opacity: 0, y: 14 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.25, delay: index * 0.05, ease: "easeOut" }}
-                            className={`flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-left transition ${
-                              isActive
-                                ? "border-[#4353de] bg-gradient-to-r from-[#2f66dc] to-[#4c3fd8] text-white"
-                                : "border-[#cfd7e6] bg-white text-[#1f2937]"
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${
-                                  isActive ? "bg-white/18 text-white" : "bg-[#e7ecf9] text-[#2f66dc]"
-                                }`}
-                              >
-                                {getInitials(waiter).charAt(0)}
-                              </div>
-                              <div className="leading-tight">
-                                <p className="font-semibold">
-                                  {waiter.firstName} {waiter.lastName.charAt(0)}.
-                                </p>
-                                <p className={`text-sm ${isActive ? "text-white/85" : "text-[#4b5563]"}`}>Mozo</p>
-                              </div>
-                            </div>
-                            <ArrowRight className={`h-4 w-4 ${isActive ? "text-white" : "text-[#1f2937]"}`} />
-                          </motion.button>
-                        );
-                      })
-                    : null}
-                </div>
-              </div>
-            ) : null}
-
             <button
               type="button"
-              disabled={waiters.length === 0 || !selectedWaiter}
+              disabled={!selectedWaiter && !hasGeneralTipLink}
               onClick={() => {
-                if (!selectedWaiter) return;
+                if (!selectedWaiter) {
+                  openGeneralTipLink();
+                  return;
+                }
                 setModalWaiter(selectedWaiter);
               }}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#92dce2] bg-[#c4eef0] px-4 py-4 text-sm font-semibold text-[#07a9b2] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CreditCard className="h-4 w-4" />
-              Transferi por Mercado Pago
+              {selectedWaiter ? "Transferi por Mercado Pago" : "Propina general por Mercado Pago"}
             </button>
           </div>
         ) : null}

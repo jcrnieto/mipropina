@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
+import { clerkSpanishLocalization } from "@/app/lib/clerk-localization";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -43,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider localization={clerkSpanishLocalization}>
       <html lang="es" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background text-foreground antialiased`}

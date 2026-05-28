@@ -6,6 +6,7 @@ import { getRestaurantByBrandSlugAndRestaurantSlug } from "@/app/lib/server/modu
 import { NavbarAdmin } from "@/app/components/admin/NavbarAdmin";
 import { RestaurantQR } from "@/app/components/admin/RestaurantQR";
 import { AnalyticsDashboard } from "@/app/components/admin/AnalyticsDashboard";
+import { GeneralTipLinkEditor } from "@/app/components/admin/GeneralTipLinkEditor";
 import { NotificationsManager } from "@/app/components/admin/NotificationsManager";
 import { PersonalDataEditor } from "@/app/components/admin/PersonalDataEditor";
 import { RatingConfigEditor } from "@/app/components/admin/RatingConfigEditor";
@@ -113,6 +114,10 @@ export default async function RestaurantAdminPage({ params }: Props) {
           </div>
         </div>
 
+        <section id="propina-general">
+          <GeneralTipLinkEditor brandSlug={brandSlug} restaurantSlug={restaurant.slug} />
+        </section>
+
         <section id="notificaciones">
           <NotificationsManager brandSlug={brandSlug} restaurantSlug={restaurant.slug} />
         </section>
@@ -128,7 +133,7 @@ export default async function RestaurantAdminPage({ params }: Props) {
               <h2 className="mt-2 text-2xl font-bold text-[#122443]">Equipo de mozos</h2>
               <p className="mt-2 text-sm text-[#607193]">Crea, edita y elimina los mozos de este restaurante.</p>
             </div>
-            <WaitersSection brandSlug={brandSlug} />
+            <WaitersSection brandSlug={brandSlug} restaurantSlug={restaurant.slug} />
           </div>
         </section>
       </div>

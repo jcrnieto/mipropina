@@ -26,6 +26,7 @@ export async function GET(_: Request, { params }: RouteProps) {
         phone: storeInfo?.phone ?? null,
         address: storeInfo?.address ?? null,
         logo: storeInfo?.image ?? null,
+        generalTipLink: storeInfo?.general_tip_link ?? null,
       },
       ratingFeatures,
       waiters: employees.map((employee) => ({

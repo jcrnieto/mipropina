@@ -79,6 +79,7 @@ export async function getPublicStoreInfoByBrandSlug(brandSlug: string): Promise<
   instagram: string | null;
   facebook: string | null;
   tiktok: string | null;
+  general_tip_link: string | null;
 } | null> {
   const restaurant = await getRestaurantBySlug(brandSlug);
   if (!restaurant) {
@@ -93,6 +94,7 @@ export async function getPublicStoreInfoByBrandSlug(brandSlug: string): Promise<
     instagram: restaurant.instagram,
     facebook: restaurant.facebook,
     tiktok: restaurant.tiktok,
+    general_tip_link: restaurant.general_tip_link,
   };
 }
 
@@ -271,6 +273,40 @@ export async function getRestaurantByBrandSlugAndRestaurantSlug(
   return getRestaurantRowByBrandAndRestaurantSlug(brandSlug, restaurantSlug);
 }
 
+export async function getGeneralTipLinkByBrandAndRestaurantSlug(input: {
+  clerkUserId: string;
+  brandSlug: string;
+  restaurantSlug: string;
+}): Promise<string | null> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(input.brandSlug, input.restaurantSlug);
+  if (!restaurant || restaurant.auth_user_id !== input.clerkUserId) {
+    throw new Error("No se encontro el local.");
+  }
+
+  return restaurant.general_tip_link ?? null;
+}
+
+export async function setGeneralTipLinkByBrandAndRestaurantSlug(input: {
+  clerkUserId: string;
+  brandSlug: string;
+  restaurantSlug: string;
+  generalTipLink: string | null;
+}): Promise<string | null> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(input.brandSlug, input.restaurantSlug);
+  if (!restaurant || restaurant.auth_user_id !== input.clerkUserId) {
+    throw new Error("No se encontro el local.");
+  }
+
+  const rows = await patchRestaurantById(restaurant.id, {
+    general_tip_link: input.generalTipLink,
+  });
+  if (rows.length === 0) {
+    throw new Error("No se pudo guardar el link de propina general.");
+  }
+
+  return rows[0]?.general_tip_link ?? null;
+}
+
 export async function listRestaurantsByBrandId(brandId: string) {
   return listRestaurantsByBrandIdRepository(brandId);
 }
@@ -287,6 +323,7 @@ export async function getPublicStoreInfoByBrandAndRestaurantSlug(
   instagram: string | null;
   facebook: string | null;
   tiktok: string | null;
+  generalTipLink: string | null;
   brandPublicPath: string;
 } | null> {
   const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(brandSlug, restaurantSlug);
@@ -303,6 +340,7 @@ export async function getPublicStoreInfoByBrandAndRestaurantSlug(
     instagram: restaurant.instagram,
     facebook: restaurant.facebook,
     tiktok: restaurant.tiktok,
+    generalTipLink: restaurant.general_tip_link,
     brandPublicPath: restaurant.brands_mipropina?.[0]?.public_path ?? restaurant.brands_mipropina?.[0]?.slug ?? brandSlug,
   };
 }

@@ -8,6 +8,7 @@ import { Waiter } from "./waiters.types";
 
 type WaitersListProps = {
   brandSlug: string;
+  restaurantSlug: string;
   waiters: Waiter[];
   isLoading: boolean;
   error: string | null;
@@ -18,6 +19,7 @@ type WaitersListProps = {
 
 export function WaitersList({
   brandSlug,
+  restaurantSlug,
   waiters,
   isLoading,
   error,
@@ -27,12 +29,12 @@ export function WaitersList({
 }: WaitersListProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const publicBaseUrl = useMemo(() => {
-    const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const base = process.env.NEXT_PUBLIC_APP_URL || "https://www.satixapp.com";
     return base.replace(/\/+$/, "");
   }, []);
 
   const buildWaiterUrl = (waiterId: string) =>
-    `${publicBaseUrl}/${brandSlug}?waiter=${encodeURIComponent(waiterId)}`;
+    `${publicBaseUrl}/${brandSlug}/${restaurantSlug}?waiter=${encodeURIComponent(waiterId)}`;
 
   const copyWaiterLink = async (waiterId: string) => {
     await navigator.clipboard.writeText(buildWaiterUrl(waiterId));

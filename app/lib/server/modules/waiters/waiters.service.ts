@@ -68,6 +68,42 @@ export async function createEmployeeByClerkId(input: {
   return mapEmployeeRow(created);
 }
 
+export async function createEmployeeByClerkIdAndRestaurantSlug(input: {
+  clerkUserId: string;
+  brandSlug: string;
+  restaurantSlug: string;
+  name: string;
+  lastName: string;
+  dni: string;
+  phone: string;
+  mercadopagoLink: string;
+  image?: string | null;
+}): Promise<WaiterResponseRow> {
+  const usersMipropinaId = await getUsersMipropinaIdByClerkId(input.clerkUserId);
+  if (!usersMipropinaId) {
+    throw new Error("Cannot create employee without users_mipropina row");
+  }
+
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(input.brandSlug, input.restaurantSlug);
+  if (!restaurant || restaurant.auth_user_id !== input.clerkUserId) {
+    throw new Error("Cannot create employee without restaurant row");
+  }
+
+  const created = await insertEmployee({
+    restaurant_id: restaurant.id,
+    user_id: usersMipropinaId,
+    auth_user_id: input.clerkUserId,
+    name: input.name,
+    last_name: input.lastName,
+    dni: input.dni,
+    phone: input.phone,
+    mercadopago_link: input.mercadopagoLink,
+    image: input.image ?? null,
+  });
+
+  return mapEmployeeRow(created);
+}
+
 export async function listEmployeesByClerkId(clerkUserId: string): Promise<WaiterResponseRow[]> {
   const primaryRestaurant = await getPrimaryRestaurantByClerkId(clerkUserId);
   if (!primaryRestaurant) {
@@ -75,6 +111,20 @@ export async function listEmployeesByClerkId(clerkUserId: string): Promise<Waite
   }
 
   const rows = await listEmployeesByRestaurantId(primaryRestaurant.id);
+  return rows.map(mapEmployeeRow);
+}
+
+export async function listEmployeesByClerkIdAndRestaurantSlug(input: {
+  clerkUserId: string;
+  brandSlug: string;
+  restaurantSlug: string;
+}): Promise<WaiterResponseRow[]> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(input.brandSlug, input.restaurantSlug);
+  if (!restaurant || restaurant.auth_user_id !== input.clerkUserId) {
+    return [];
+  }
+
+  const rows = await listEmployeesByRestaurantId(restaurant.id);
   return rows.map(mapEmployeeRow);
 }
 
@@ -88,6 +138,20 @@ export async function deleteEmployeeByClerkId(
   }
 
   await deleteEmployeeByRestaurantIdAndEmployeeId(primaryRestaurant.id, employeeId);
+}
+
+export async function deleteEmployeeByClerkIdAndRestaurantSlug(input: {
+  clerkUserId: string;
+  brandSlug: string;
+  restaurantSlug: string;
+  employeeId: string;
+}): Promise<void> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(input.brandSlug, input.restaurantSlug);
+  if (!restaurant || restaurant.auth_user_id !== input.clerkUserId) {
+    throw new Error("Cannot delete employee without restaurant row");
+  }
+
+  await deleteEmployeeByRestaurantIdAndEmployeeId(restaurant.id, input.employeeId);
 }
 
 export async function updateEmployeeByClerkId(input: {
@@ -107,6 +171,39 @@ export async function updateEmployeeByClerkId(input: {
 
   const updated = await updateEmployeeByRestaurantIdAndEmployeeId({
     restaurantId: primaryRestaurant.id,
+    employeeId: input.employeeId,
+    payload: {
+      name: input.name,
+      last_name: input.lastName,
+      dni: input.dni,
+      phone: input.phone,
+      mercadopago_link: input.mercadopagoLink,
+      image: input.image ?? null,
+    },
+  });
+
+  return mapEmployeeRow(updated);
+}
+
+export async function updateEmployeeByClerkIdAndRestaurantSlug(input: {
+  clerkUserId: string;
+  brandSlug: string;
+  restaurantSlug: string;
+  employeeId: string;
+  name: string;
+  lastName: string;
+  dni: string;
+  phone: string;
+  mercadopagoLink: string;
+  image?: string | null;
+}): Promise<WaiterResponseRow> {
+  const restaurant = await getRestaurantByBrandSlugAndRestaurantSlug(input.brandSlug, input.restaurantSlug);
+  if (!restaurant || restaurant.auth_user_id !== input.clerkUserId) {
+    throw new Error("Cannot update employee without restaurant row");
+  }
+
+  const updated = await updateEmployeeByRestaurantIdAndEmployeeId({
+    restaurantId: restaurant.id,
     employeeId: input.employeeId,
     payload: {
       name: input.name,
