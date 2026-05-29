@@ -19,7 +19,8 @@ type TrendPoint = {
 };
 
 type DistributionPoint = {
-  bucket: number;
+  status: "positive" | "neutral" | "negative";
+  label: string;
   total: number;
 };
 
@@ -118,6 +119,48 @@ function buildTrendPoints(data: TrendPoint[], width = 620, height = 220) {
     const y = height - padding - ((item.promedio - min) * (height - padding * 2)) / span;
     return { x, y, dia: item.dia, promedio: item.promedio };
   });
+}
+
+function getStatusStyles(status?: ExperienceItem["experienceStatus"]) {
+  if (status === "positive") {
+    return {
+      row: "border-[#bdebd2] bg-[#f2fbf6]",
+      text: "text-[#137a4b]",
+      score: "text-[#137a4b]",
+      comment: "text-[#1b2c4e]",
+    };
+  }
+
+  if (status === "neutral") {
+    return {
+      row: "border-[#f2d6a9] bg-[#fffaf1]",
+      text: "text-[#956118]",
+      score: "text-[#956118]",
+      comment: "text-[#1b2c4e]",
+    };
+  }
+
+  if (status === "negative") {
+    return {
+      row: "border-[#f7c7c7] bg-[#fff4f4]",
+      text: "text-[#a43a3a]",
+      score: "text-[#a43a3a]",
+      comment: "font-medium text-[#8f1d1d]",
+    };
+  }
+
+  return {
+    row: "border-[#eef3ff]",
+    text: "text-[#1b2c4e]",
+    score: "text-[#1b2c4e]",
+    comment: "text-[#1b2c4e]",
+  };
+}
+
+function getDistributionBarColor(status: DistributionPoint["status"]) {
+  if (status === "positive") return "bg-[#1a7f52]";
+  if (status === "neutral") return "bg-[#b5791f]";
+  return "bg-[#a43a3a]";
 }
 
 export function AnalyticsDashboard({ brandSlug, restaurantSlug }: { brandSlug: string; restaurantSlug?: string }) {
@@ -335,14 +378,14 @@ export function AnalyticsDashboard({ brandSlug, restaurantSlug }: { brandSlug: s
             </article>
 
             <article className="rounded-xl border border-[#dfe6f3] bg-white p-4">
-              <h3 className="text-sm font-semibold text-[#1a2c52]">Distribucion de puntuacion</h3>
+              <h3 className="text-sm font-semibold text-[#1a2c52]">Resultado de experiencias</h3>
               <div className="mt-3 space-y-2">
                 {distribution.map((item) => (
-                  <div key={item.bucket} className="grid grid-cols-[30px_1fr_38px] items-center gap-2">
-                    <span className="text-xs font-semibold text-[#1a2c52]">{item.bucket}</span>
+                  <div key={item.status} className="grid grid-cols-[86px_1fr_38px] items-center gap-2">
+                    <span className="text-xs font-semibold text-[#1a2c52]">{item.label}</span>
                     <div className="h-2 rounded-full bg-[#ecf2ff]">
                       <div
-                        className="h-2 rounded-full bg-[#2f66dc]"
+                        className={`h-2 rounded-full ${getDistributionBarColor(item.status)}`}
                         style={{ width: `${(item.total * 100) / maxDistribution}%` }}
                       />
                     </div>
@@ -414,45 +457,43 @@ export function AnalyticsDashboard({ brandSlug, restaurantSlug }: { brandSlug: s
                     <th className="px-2 py-2 font-semibold">Fecha</th>
                     <th className="px-2 py-2 font-semibold">Mozo</th>
                     <th className="px-2 py-2 font-semibold">Atencion mozo</th>
-                    <th className="px-2 py-2 font-semibold">Score</th>
+                    <th className="px-2 py-2 font-semibold">Promedio</th>
                     <th className="px-2 py-2 font-semibold">Origen</th>
                     <th className="px-2 py-2 font-semibold">Mesa</th>
                     <th className="px-2 py-2 font-semibold">Comentario</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(experiences?.items ?? []).map((item) => (
-                    <tr
-                      key={item.id}
-                      className={`border-b ${
-                        item.experienceStatus === "negative"
-                          ? "border-[#f7c7c7] bg-[#fff4f4]"
-                          : "border-[#eef3ff]"
-                      }`}
-                    >
-                      <td className="px-2 py-2 text-[#1b2c4e]">
-                        {new Date(item.createdAt).toLocaleString("es-AR")}
-                      </td>
-                      <td className={`px-2 py-2 ${item.experienceStatus === "negative" ? "text-[#a43a3a]" : "text-[#1b2c4e]"}`}>
-                        {item.waiterName ?? "-"}
-                      </td>
-                      <td className={`px-2 py-2 font-semibold ${item.waiterServiceScore && item.waiterServiceScore <= 2 ? "text-[#a43a3a]" : "text-[#1b2c4e]"}`}>
-                        {item.waiterServiceScore ?? "-"}
-                      </td>
-                      <td className={`px-2 py-2 font-semibold ${item.experienceStatus === "negative" ? "text-[#a43a3a]" : "text-[#1b2c4e]"}`}>
-                        {item.overallScore}
-                      </td>
-                      <td className="px-2 py-2 text-[#607193]">{item.source}</td>
-                      <td className="px-2 py-2 text-[#607193]">{item.tableCode ?? "-"}</td>
-                      <td
-                        className={`max-w-[360px] truncate px-2 py-2 ${
-                          item.experienceStatus === "negative" ? "font-medium text-[#8f1d1d]" : "text-[#1b2c4e]"
-                        }`}
-                      >
-                        {item.comment ?? "-"}
-                      </td>
-                    </tr>
-                  ))}
+                  {(experiences?.items ?? []).map((item) => {
+                    const statusStyles = getStatusStyles(item.experienceStatus);
+                    return (
+                      <tr key={item.id} className={`border-b ${statusStyles.row}`}>
+                        <td className="px-2 py-2 text-[#1b2c4e]">
+                          {new Date(item.createdAt).toLocaleString("es-AR")}
+                        </td>
+                        <td className={`px-2 py-2 ${statusStyles.text}`}>
+                          {item.waiterName ?? "-"}
+                        </td>
+                        <td
+                          className={`px-2 py-2 font-semibold ${
+                            item.waiterServiceScore && item.waiterServiceScore <= 2
+                              ? "text-[#a43a3a]"
+                              : "text-[#1b2c4e]"
+                          }`}
+                        >
+                          {item.waiterServiceScore ?? "-"}
+                        </td>
+                        <td className={`px-2 py-2 font-semibold ${statusStyles.score}`}>
+                          {item.overallScore}
+                        </td>
+                        <td className="px-2 py-2 text-[#607193]">{item.source}</td>
+                        <td className="px-2 py-2 text-[#607193]">{item.tableCode ?? "-"}</td>
+                        <td className={`max-w-[360px] truncate px-2 py-2 ${statusStyles.comment}`}>
+                          {item.comment ?? "-"}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 

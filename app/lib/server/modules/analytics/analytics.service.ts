@@ -100,6 +100,23 @@ function getExperienceScores(row: RatingSubmissionRow): number[] {
     .filter((item): item is number => item !== null);
 }
 
+function classifyExperience(row: RatingSubmissionRow): "positive" | "neutral" | "negative" | null {
+  const score = getOverallScore(row);
+  if (score === null) {
+    return null;
+  }
+
+  if (score >= 4) {
+    return "positive";
+  }
+
+  if (score >= 3) {
+    return "neutral";
+  }
+
+  return "negative";
+}
+
 function getLowestScore(row: RatingSubmissionRow): number | null {
   const scores = getExperienceScores(row);
   if (scores.length === 0) {
@@ -107,23 +124,6 @@ function getLowestScore(row: RatingSubmissionRow): number | null {
   }
 
   return Math.min(...scores);
-}
-
-function classifyExperience(row: RatingSubmissionRow): "positive" | "neutral" | "negative" | null {
-  const scores = getExperienceScores(row);
-  if (scores.length === 0) {
-    return null;
-  }
-
-  if (scores.some((score) => score <= 2)) {
-    return "negative";
-  }
-
-  if (scores.every((score) => score >= 4)) {
-    return "positive";
-  }
-
-  return "neutral";
 }
 
 async function listRatingSubmissionsByRestaurantId(input: {
@@ -202,7 +202,7 @@ function buildTrend(rows: RatingSubmissionRow[]) {
 
   for (const row of rows) {
     const day = row.created_at.slice(0, 10);
-    const score = getLowestScore(row);
+    const score = getOverallScore(row);
     const current = grouped.get(day) ?? { total: 0, sum: 0, scored: 0 };
     current.total += 1;
     if (score !== null) {
@@ -222,24 +222,24 @@ function buildTrend(rows: RatingSubmissionRow[]) {
 }
 
 function buildDistribution(rows: RatingSubmissionRow[]) {
-  const buckets = new Map<number, number>([
-    [1, 0],
-    [2, 0],
-    [3, 0],
-    [4, 0],
-    [5, 0],
+  const buckets = new Map<"positive" | "neutral" | "negative", { label: string; total: number }>([
+    ["positive", { label: "Positivas", total: 0 }],
+    ["neutral", { label: "Neutras", total: 0 }],
+    ["negative", { label: "Negativas", total: 0 }],
   ]);
 
   for (const row of rows) {
-    const score = getLowestScore(row);
-    if (score === null) continue;
-    const rounded = Math.max(1, Math.min(5, Math.round(score)));
-    buckets.set(rounded, (buckets.get(rounded) ?? 0) + 1);
+    const classification = classifyExperience(row);
+    if (!classification) continue;
+    const current = buckets.get(classification);
+    if (!current) continue;
+    current.total += 1;
   }
 
-  return [...buckets.entries()].map(([bucket, total]) => ({
-    bucket,
-    total,
+  return [...buckets.entries()].map(([status, data]) => ({
+    status,
+    label: data.label,
+    total: data.total,
   }));
 }
 
