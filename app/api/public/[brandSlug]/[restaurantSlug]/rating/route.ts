@@ -122,60 +122,66 @@ export async function POST(req: Request, { params }: RouteProps) {
     });
 
     const notificationScores = waiterServiceStars === null ? starsInput : [...starsInput, waiterServiceStars];
-    const notificationTarget =
-      notificationScores.length > 0 && shouldNotifyLowRating(notificationScores)
-        ? await getRestaurantNotificationTarget({ brandSlug, restaurantSlug })
-        : null;
-    if (notificationTarget?.enabled) {
-      const storeInfo = await getPublicStoreInfoByBrandAndRestaurantSlug(brandSlug, restaurantSlug);
-      const averageStars = notificationScores.reduce((sum, item) => sum + item, 0) / notificationScores.length;
-      const lowestStars = Math.min(...notificationScores);
-      const brandName = storeInfo?.brandName?.trim() || brandSlug;
 
-      try {
-        await sendOneSignalLowRatingAlert({
-          ownerAuthUserId: notificationTarget.authUserId,
-          brandName,
-          brandSlug,
-          restaurantSlug,
-          averageStars,
-          lowestStars,
-          comment,
-        });
-      } catch (notificationError) {
-        console.error("[rating-alert][onesignal] notification failed", notificationError);
-      }
+    try {
+      const notificationTarget =
+        notificationScores.length > 0 && shouldNotifyLowRating(notificationScores)
+          ? await getRestaurantNotificationTarget({ brandSlug, restaurantSlug })
+          : null;
 
-      try {
-        await sendLowRatingEmailAlert({
-          ownerAuthUserId: notificationTarget.authUserId,
-          brandName,
-          brandSlug,
-          restaurantSlug,
-          branchName: storeInfo?.branchName,
-          averageStars,
-          lowestStars,
-          comment,
-        });
-      } catch (notificationError) {
-        console.error("[rating-alert][email] notification failed", notificationError);
-      }
+      if (notificationTarget?.enabled) {
+        const storeInfo = await getPublicStoreInfoByBrandAndRestaurantSlug(brandSlug, restaurantSlug);
+        const averageStars = notificationScores.reduce((sum, item) => sum + item, 0) / notificationScores.length;
+        const lowestStars = Math.min(...notificationScores);
+        const brandName = storeInfo?.brandName?.trim() || brandSlug;
 
-      try {
-        const ownerPhone = storeInfo?.phone?.trim() || "";
-        if (ownerPhone) {
-          await sendWhatsAppLowRatingAlert({
-            ownerPhone,
+        try {
+          await sendOneSignalLowRatingAlert({
+            ownerAuthUserId: notificationTarget.authUserId,
             brandName,
             brandSlug,
+            restaurantSlug,
             averageStars,
             lowestStars,
             comment,
           });
+        } catch (notificationError) {
+          console.error("[rating-alert][onesignal] notification failed", notificationError);
         }
-      } catch (notificationError) {
-        console.error("[rating-alert][whatsapp] notification failed", notificationError);
+
+        try {
+          await sendLowRatingEmailAlert({
+            ownerAuthUserId: notificationTarget.authUserId,
+            brandName,
+            brandSlug,
+            restaurantSlug,
+            branchName: storeInfo?.branchName,
+            averageStars,
+            lowestStars,
+            comment,
+          });
+        } catch (notificationError) {
+          console.error("[rating-alert][email] notification failed", notificationError);
+        }
+
+        try {
+          const ownerPhone = storeInfo?.phone?.trim() || "";
+          if (ownerPhone) {
+            await sendWhatsAppLowRatingAlert({
+              ownerPhone,
+              brandName,
+              brandSlug,
+              averageStars,
+              lowestStars,
+              comment,
+            });
+          }
+        } catch (notificationError) {
+          console.error("[rating-alert][whatsapp] notification failed", notificationError);
+        }
       }
+    } catch (notificationError) {
+      console.error("[rating-alert] notification pipeline failed", notificationError);
     }
 
     return Response.json({ ok: true });
