@@ -8,6 +8,14 @@ type LowRatingPushInput = {
   comment?: string | null;
 };
 
+type OneSignalPushInput = {
+  externalId: string;
+  title: string;
+  body: string;
+  url?: string;
+  data?: Record<string, unknown>;
+};
+
 function readEnvString(key: string): string | null {
   const value = process.env[key];
   if (!value) return null;
@@ -60,6 +68,22 @@ function formatPushBody(input: LowRatingPushInput): string {
 }
 
 export async function sendOneSignalLowRatingAlert(input: LowRatingPushInput): Promise<void> {
+  await sendOneSignalPushToExternalId({
+    externalId: input.ownerAuthUserId,
+    title: `Alerta de resena en ${input.brandName}`,
+    body: formatPushBody(input),
+    url: buildNotificationUrl(input),
+    data: {
+      type: "low_rating",
+      brandSlug: input.brandSlug,
+      restaurantSlug: input.restaurantSlug ?? null,
+      averageStars: input.averageStars,
+      lowestStars: input.lowestStars,
+    },
+  });
+}
+
+export async function sendOneSignalPushToExternalId(input: OneSignalPushInput): Promise<void> {
   const { appId, restApiKey } = getOneSignalConfig();
   const response = await fetch("https://api.onesignal.com/notifications?c=push", {
     method: "POST",
@@ -71,30 +95,46 @@ export async function sendOneSignalLowRatingAlert(input: LowRatingPushInput): Pr
       app_id: appId,
       target_channel: "push",
       include_aliases: {
-        external_id: [input.ownerAuthUserId],
+        external_id: [input.externalId],
       },
       headings: {
-        es: `Alerta de resena en ${input.brandName}`,
-        en: `Review alert for ${input.brandName}`,
+        es: input.title,
+        en: input.title,
       },
       contents: {
-        es: formatPushBody(input),
-        en: formatPushBody(input),
+        es: input.body,
+        en: input.body,
       },
-      url: buildNotificationUrl(input),
-      data: {
-        type: "low_rating",
-        brandSlug: input.brandSlug,
-        restaurantSlug: input.restaurantSlug ?? null,
-        averageStars: input.averageStars,
-        lowestStars: input.lowestStars,
-      },
+      url: input.url,
+      data: input.data,
     }),
     cache: "no-store",
   });
 
+  const responseText = await response.text();
+  let responseJson: unknown = null;
+  try {
+    responseJson = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    responseJson = null;
+  }
+
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OneSignal push send failed (${response.status}): ${errorText}`);
+    throw new Error(`OneSignal push send failed (${response.status}): ${responseText}`);
+  }
+
+  if (responseJson && typeof responseJson === "object") {
+    const payload = responseJson as { recipients?: unknown; errors?: unknown; id?: unknown };
+    if (payload.errors) {
+      throw new Error(`OneSignal push send returned errors: ${JSON.stringify(payload.errors)}`);
+    }
+
+    if (typeof payload.recipients === "number" && payload.recipients < 1) {
+      throw new Error(`OneSignal push send reached 0 recipients for external_id ${input.externalId}.`);
+    }
+
+    if (typeof payload.id === "string" && payload.id.length === 0) {
+      throw new Error(`OneSignal push send did not return a notification id for external_id ${input.externalId}.`);
+    }
   }
 }
