@@ -45,7 +45,7 @@ export async function POST() {
     const checkout = await createMercadoPagoSubscriptionCheckout({
       brandId,
       payerEmail: primaryEmail,
-      reason: `Suscripcion MiPropina - ${brandName}`,
+      reason: `Suscripcion Satix - ${brandName}`,
       amount: getSubscriptionAmount(),
       currencyId: "ARS",
       brandSlug,

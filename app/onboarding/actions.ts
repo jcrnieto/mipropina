@@ -244,7 +244,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
     checkout = await createMercadoPagoSubscriptionCheckout({
       brandId,
       payerEmail: primaryEmail as string,
-      reason: `Suscripcion MiPropina - ${brandName}`,
+      reason: `Suscripcion Satix - ${brandName}`,
       amount: getSubscriptionAmount(),
       currencyId: "ARS",
       brandSlug,

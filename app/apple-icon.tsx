@@ -17,28 +17,19 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background:
-            "linear-gradient(160deg, #1d4ed8 0%, #2563eb 45%, #0f766e 100%)",
-          color: "#ffffff",
+          background: "#ffffff",
           fontFamily: "sans-serif",
         }}
       >
-        <div
+        <img
+          src={`${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.satixapp.com"}/isologo-satix.png`}
+          alt="Satix"
           style={{
-            display: "flex",
-            height: 112,
-            width: 112,
-            borderRadius: 28,
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(255,255,255,0.16)",
-            fontSize: 56,
-            fontWeight: 800,
-            letterSpacing: -3,
+            width: 126,
+            height: 126,
+            objectFit: "contain",
           }}
-        >
-          MP
-        </div>
+        />
       </div>
     ),
     size,

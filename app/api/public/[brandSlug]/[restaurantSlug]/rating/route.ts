@@ -10,6 +10,7 @@ import {
 } from "@/app/lib/server/modules/notifications/whatsapp.service";
 import { getRestaurantNotificationTarget } from "@/app/lib/server/modules/notifications/notifications-config.service";
 import { sendOneSignalLowRatingAlert } from "@/app/lib/server/modules/notifications/onesignal.service";
+import { sendLowRatingEmailAlert } from "@/app/lib/server/modules/notifications/email-alert.service";
 
 type RouteProps = {
   params: Promise<{ brandSlug: string; restaurantSlug: string }>;
@@ -143,6 +144,21 @@ export async function POST(req: Request, { params }: RouteProps) {
         });
       } catch (notificationError) {
         console.error("[rating-alert][onesignal] notification failed", notificationError);
+      }
+
+      try {
+        await sendLowRatingEmailAlert({
+          ownerAuthUserId: notificationTarget.authUserId,
+          brandName,
+          brandSlug,
+          restaurantSlug,
+          branchName: storeInfo?.branchName,
+          averageStars,
+          lowestStars,
+          comment,
+        });
+      } catch (notificationError) {
+        console.error("[rating-alert][email] notification failed", notificationError);
       }
 
       try {

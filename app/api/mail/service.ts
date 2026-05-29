@@ -195,3 +195,46 @@ export async function sendSubscriptionActiveEmail({
     `,
   });
 }
+
+export async function sendLowRatingAlertEmail({
+  email,
+  name,
+  brandName,
+  branchName,
+  adminUrl,
+  averageStars,
+  lowestStars,
+  comment,
+}: {
+  email: string;
+  name: string;
+  brandName: string;
+  branchName?: string | null;
+  adminUrl?: string | null;
+  averageStars: number;
+  lowestStars: number;
+  comment?: string | null;
+}) {
+  const commentText = comment?.trim();
+
+  return sendBrevoEmail({
+    to: [{ email, name }],
+    subject: `Alerta Satix: reseña baja en ${brandName}`,
+    htmlContent: `
+      <h2>Alerta de reseña baja</h2>
+      <p>Hola ${name},</p>
+      <p>Un cliente dejó una calificación baja en <strong>${brandName}</strong>${branchName ? `, local <strong>${branchName}</strong>` : ""}.</p>
+      <ul>
+        <li><strong>Promedio:</strong> ${averageStars.toFixed(1)} estrellas</li>
+        <li><strong>Puntaje mínimo:</strong> ${lowestStars} estrella(s)</li>
+        ${commentText ? `<li><strong>Comentario:</strong> ${commentText}</li>` : ""}
+      </ul>
+      ${
+        adminUrl
+          ? `<p><a href="${adminUrl}" target="_blank" rel="noreferrer">Abrir panel del local</a></p>`
+          : ""
+      }
+      <p>Te enviamos este aviso porque las alertas de Satix están activas para este local.</p>
+    `,
+  });
+}

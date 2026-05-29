@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "MiPropina",
-    short_name: "MiPropina",
+    name: "Satix",
+    short_name: "Satix",
     description:
       "Panel para dueños de restaurantes con control de reseñas internas, propinas y métricas.",
     start_url: "/admin",

@@ -38,9 +38,13 @@ function getOneSignalConfig(): {
 }
 
 function getAppBaseUrl(): string | null {
-  const raw = readEnvString("NEXT_PUBLIC_APP_URL");
+  const raw =
+    readEnvString("NEXT_PUBLIC_APP_URL") ??
+    readEnvString("VERCEL_PROJECT_PRODUCTION_URL") ??
+    readEnvString("VERCEL_URL");
   if (!raw) return null;
-  return raw.replace(/\/+$/, "");
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  return withProtocol.replace(/\/+$/, "");
 }
 
 function buildNotificationUrl(input: LowRatingPushInput): string | undefined {

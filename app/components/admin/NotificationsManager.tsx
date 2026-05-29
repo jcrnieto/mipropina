@@ -15,7 +15,6 @@ export function NotificationsManager({
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSendingTest, setIsSendingTest] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -155,38 +154,6 @@ export function NotificationsManager({
     }
   };
 
-  const handleSendTest = async () => {
-    setIsSendingTest(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const hasBrowserPermission = await ensureBrowserPushPermission();
-      if (!hasBrowserPermission) {
-        return;
-      }
-
-      const query = new URLSearchParams({ brandSlug, restaurantSlug });
-      const response = await fetch(`/api/admin/notifications-test?${query.toString()}`, {
-        method: "POST",
-      });
-      const json = (await response.json()) as {
-        ok: boolean;
-        error?: string;
-      };
-
-      if (!response.ok || !json.ok) {
-        throw new Error(json.error || "No se pudo enviar la prueba.");
-      }
-
-      setSuccess("Prueba enviada. Revisá tus dispositivos suscriptos.");
-    } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : "No se pudo enviar la prueba.");
-    } finally {
-      setIsSendingTest(false);
-    }
-  };
-
   return (
     <section className="rounded-2xl border border-[#d8e0ef] bg-white p-6 shadow-[0_10px_25px_rgba(30,48,90,0.08)]">
       <div className="flex items-start justify-between gap-4">
@@ -234,27 +201,15 @@ export function NotificationsManager({
           {error && <p className="text-sm text-red-600">{error}</p>}
           {success && <p className="text-sm text-[#0f8a61]">{success}</p>}
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={handleToggle}
-              disabled={isSaving}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#2f66dc] bg-[#2f66dc] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2457c4] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Save className="h-4 w-4" />
-              {isSaving ? "Guardando..." : isEnabled ? "Desactivar notificaciones" : "Activar notificaciones"}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSendTest}
-              disabled={!isEnabled || isSendingTest}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#d6dfef] bg-white px-4 py-2 text-sm font-semibold text-[#1c376f] transition hover:bg-[#f7f9ff] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Bell className="h-4 w-4" />
-              {isSendingTest ? "Enviando prueba..." : "Enviar prueba"}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleToggle}
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#2f66dc] bg-[#2f66dc] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2457c4] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Save className="h-4 w-4" />
+            {isSaving ? "Guardando..." : isEnabled ? "Desactivar notificaciones" : "Activar notificaciones"}
+          </button>
         </div>
       )}
     </section>
