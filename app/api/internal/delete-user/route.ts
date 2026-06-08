@@ -27,6 +27,13 @@ function isAuthorized(req: Request): boolean {
   return receivedKey === expectedKey;
 }
 
+function getClerkEnvironment(): "development" | "production" | "unknown" {
+  const secretKey = process.env.CLERK_SECRET_KEY ?? "";
+  if (secretKey.startsWith("sk_test_")) return "development";
+  if (secretKey.startsWith("sk_live_")) return "production";
+  return "unknown";
+}
+
 async function deleteRowsByAuthUserId(table: string, clerkUserId: string): Promise<void> {
   const encodedId = encodeURIComponent(clerkUserId);
   await supabaseRestRequest(`/rest/v1/${table}?auth_user_id=eq.${encodedId}`, {
@@ -82,6 +89,26 @@ async function handleDeleteUser(req: Request, allowQueryParam: boolean) {
       );
     }
 
+    const clerkEnvironment = getClerkEnvironment();
+    const client = await clerkClient();
+
+    try {
+      await client.users.getUser(clerkUserId);
+    } catch (error) {
+      if (isClerkNotFoundError(error)) {
+        return Response.json(
+          {
+            ok: false,
+            error: `User does not exist in Clerk ${clerkEnvironment}. Supabase was not modified.`,
+            clerkUserId,
+            clerkEnvironment,
+          },
+          { status: 404 },
+        );
+      }
+      throw error;
+    }
+
     // Child tables first, then parent.
     const tables = [
       "rating_submission_mipropina",
@@ -99,13 +126,14 @@ async function handleDeleteUser(req: Request, allowQueryParam: boolean) {
     }
     await deleteBrandsByOwnerAuthUserId(clerkUserId);
 
-    let clerkDeleted = true;
+    await client.users.deleteUser(clerkUserId);
+
+    let clerkDeletionVerified = false;
     try {
-      const client = await clerkClient();
-      await client.users.deleteUser(clerkUserId);
+      await client.users.getUser(clerkUserId);
     } catch (error) {
       if (isClerkNotFoundError(error)) {
-        clerkDeleted = false;
+        clerkDeletionVerified = true;
       } else {
         throw error;
       }
@@ -114,8 +142,10 @@ async function handleDeleteUser(req: Request, allowQueryParam: boolean) {
     return Response.json({
       ok: true,
       clerkUserId,
+      clerkEnvironment,
       deletedFromSupabase: true,
-      deletedFromClerk: clerkDeleted,
+      deletedFromClerk: clerkDeletionVerified,
+      clerkDeletionVerified,
     });
   } catch (error) {
     return Response.json(

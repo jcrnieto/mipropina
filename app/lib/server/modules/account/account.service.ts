@@ -107,13 +107,22 @@ function mapAccountToBillingSnapshot(account: {
   mp_preapproval_id?: string | null;
   mp_preapproval_status?: string | null;
 }): BillingSnapshot {
-  const status = mapAccountStatusToBillingStatus(account.status);
+  let status = mapAccountStatusToBillingStatus(account.status);
+  const trialEndsAt = account.trial_end ?? null;
+
+  if (status === "trial_active" && trialEndsAt) {
+    const endDate = new Date(trialEndsAt);
+    if (Number.isFinite(endDate.getTime()) && endDate.getTime() <= Date.now()) {
+      status = "trial_expired";
+    }
+  }
+
   return {
     mode: status === "trial_active" || status === "trial_expired" ? "trial" : "subscription",
     status,
     trialDays: null,
     trialStartedAt: account.trial_start ?? null,
-    trialEndsAt: account.trial_end ?? null,
+    trialEndsAt,
     mercadopagoPreapprovalId: account.mp_preapproval_id ?? null,
     mercadopagoPreapprovalStatus: account.mp_preapproval_status ?? null,
   };
