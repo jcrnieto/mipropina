@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 import { Building2, ExternalLink, Plus, Store, ArrowRight, Trash2 } from "lucide-react";
-import { buildAdminPath, buildStorePath, slugifyBrand } from "@/app/lib/brand";
+import { buildAdminPath, buildStorePath } from "@/app/lib/brand";
 
 type RestaurantItem = {
   id: string;
@@ -30,7 +31,6 @@ type RestaurantsManagerProps = {
 type RestaurantForm = {
   brandName: string;
   branchName: string;
-  slug: string;
   phone: string;
   address: string;
   instagram: string;
@@ -41,23 +41,12 @@ type RestaurantForm = {
 const INITIAL_FORM: RestaurantForm = {
   brandName: "",
   branchName: "",
-  slug: "",
   phone: "",
   address: "",
   instagram: "",
   facebook: "",
   tiktok: "",
 };
-
-function normalizeSlugDraft(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+/, "");
-}
 
 export function RestaurantsManager({ initialRestaurants, billingStatus, brandSlug }: RestaurantsManagerProps) {
   const [restaurants, setRestaurants] = useState<RestaurantItem[]>(initialRestaurants);
@@ -97,26 +86,11 @@ export function RestaurantsManager({ initialRestaurants, billingStatus, brandSlu
   };
 
   const handleBrandNameChange = (value: string) => {
-    setForm((previous) => {
-      const next = { ...previous, brandName: value };
-      if (!previous.slug || previous.slug === slugifyBrand(previous.brandName || "")) {
-        next.slug = slugifyBrand(value);
-      }
-      return next;
-    });
+    setForm((previous) => ({ ...previous, brandName: value }));
   };
 
   const handleBranchNameChange = (value: string) => {
-    setForm((previous) => {
-      const next = { ...previous, branchName: value };
-      const slugWasDerivedFromBrand = previous.slug === slugifyBrand(previous.brandName || "");
-      const slugWasDerivedFromBranch = previous.slug === slugifyBrand(previous.branchName || "");
-
-      if (!previous.slug || slugWasDerivedFromBrand || slugWasDerivedFromBranch) {
-        next.slug = slugifyBrand(value);
-      }
-      return next;
-    });
+    setForm((previous) => ({ ...previous, branchName: value }));
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -124,8 +98,8 @@ export function RestaurantsManager({ initialRestaurants, billingStatus, brandSlu
     setError(null);
     setSuccess(null);
 
-    if (!form.brandName.trim() || !form.slug.trim()) {
-      setError("Completa al menos la marca y el slug del local.");
+    if (!form.brandName.trim() || !form.branchName.trim()) {
+      setError("Completa la marca y la sucursal para crear el local.");
       return;
     }
 
@@ -142,6 +116,7 @@ export function RestaurantsManager({ initialRestaurants, billingStatus, brandSlu
       const json = (await response.json()) as {
         ok: boolean;
         error?: string;
+        billingSyncWarning?: string;
       };
 
       if (!response.ok || !json.ok) {
@@ -149,7 +124,7 @@ export function RestaurantsManager({ initialRestaurants, billingStatus, brandSlu
       }
 
       setForm(INITIAL_FORM);
-      setSuccess("Local creado correctamente.");
+      setSuccess(json.billingSyncWarning ?? "Local creado correctamente.");
       await loadRestaurants();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "No se pudo crear el local.");
@@ -177,13 +152,14 @@ export function RestaurantsManager({ initialRestaurants, billingStatus, brandSlu
       const json = (await response.json()) as {
         ok: boolean;
         error?: string;
+        billingSyncWarning?: string;
       };
 
       if (!response.ok || !json.ok) {
         throw new Error(json.error || "No se pudo eliminar el local.");
       }
 
-      setSuccess("Local eliminado correctamente.");
+      setSuccess(json.billingSyncWarning ?? "Local eliminado correctamente.");
       await loadRestaurants();
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "No se pudo eliminar el local.");
@@ -204,14 +180,24 @@ export function RestaurantsManager({ initialRestaurants, billingStatus, brandSlu
             </p>
           </div>
 
-          <div className="flex flex-col items-end gap-2">
-            <span className="inline-flex items-center rounded-full border border-[#cedaf8] bg-[#f0f4ff] px-3 py-1.5 text-xs font-semibold text-[#2f4f9c]">
-              {billingStatus}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#d6dfef] bg-[#f8fbff] px-3 py-1.5 text-sm font-medium text-[#2f66dc]">
-              <Store className="h-4 w-4" />
-              {usageLabel}
-            </span>
+          <div className="flex items-start gap-3">
+            <div className="flex flex-col items-end gap-2">
+              <span className="inline-flex items-center rounded-full border border-[#cedaf8] bg-[#f0f4ff] px-3 py-1.5 text-xs font-semibold text-[#2f4f9c]">
+                {billingStatus}
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#d6dfef] bg-[#f8fbff] px-3 py-1.5 text-sm font-medium text-[#2f66dc]">
+                <Store className="h-4 w-4" />
+                {usageLabel}
+              </span>
+            </div>
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "h-10 w-10",
+                },
+              }}
+            />
           </div>
         </div>
       </section>
@@ -251,17 +237,9 @@ export function RestaurantsManager({ initialRestaurants, billingStatus, brandSlu
               </label>
             </div>
 
-            <label className="space-y-1">
-              <span className="text-sm font-medium text-[#22365f]">Slug</span>
-              <input
-                value={form.slug}
-                onChange={(event) =>
-                  setForm((previous) => ({ ...previous, slug: normalizeSlugDraft(event.target.value) }))
-                }
-                placeholder="Ej: mostaza-palermo"
-                className="w-full rounded-xl border border-[#d6dfef] bg-[#f8fbff] px-4 py-2 text-sm text-[#1b2c4e] outline-none placeholder:text-[#95a4c0] focus:border-[#5f88ea] focus:ring-2 focus:ring-[#5f88ea]/20"
-              />
-            </label>
+            <p className="rounded-xl border border-[#dce5f6] bg-[#f6f9ff] px-4 py-3 text-sm text-[#607193]">
+              Generamos la ruta del local automaticamente a partir de la sucursal.
+            </p>
 
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-1">

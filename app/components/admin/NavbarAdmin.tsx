@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 import { BarChart3, ExternalLink, LineChart, Settings2, Star, Store, UserRoundCheck, UtensilsCrossed, Building2 } from "lucide-react";
 
 type NavbarAdminProps = {
@@ -26,14 +27,24 @@ function NavbarAdmin({ brandSlug, brandName, storePath }: NavbarAdminProps) {
             </div>
           </div>
 
-          <Link
-            href={storeHref}
-            target="_blank"
-            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-[#d6dfef] bg-white px-3 py-1.5 text-sm font-medium text-[#1c376f] transition hover:bg-[#f7f9ff]"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Ver Store
-          </Link>
+          <div className="flex shrink-0 items-center gap-3">
+            <Link
+              href={storeHref}
+              target="_blank"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-[#d6dfef] bg-white px-3 py-1.5 text-sm font-medium text-[#1c376f] transition hover:bg-[#f7f9ff]"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Ver Store
+            </Link>
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "h-10 w-10",
+                },
+              }}
+            />
+          </div>
         </div>
 
         <div>

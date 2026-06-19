@@ -9,6 +9,7 @@ import { upsertOnboardingRestaurantByClerkId } from "@/app/lib/server/modules/re
 import {
   computeTrialWindow,
   createMercadoPagoSubscriptionCheckout,
+  getSubscriptionUnitAmount,
 } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
 import { sendSubscriptionPendingEmail, sendTrialWelcomeEmail } from "@/app/api/mail/service";
 import { validateOnboardingForm } from "../validations";
@@ -26,20 +27,6 @@ function parseTrialDays(value: FormDataEntryValue | null): number {
     return 14;
   }
   return 7;
-}
-
-function getSubscriptionAmount(): number {
-  const raw = process.env.MERCADOPAGO_SUBSCRIPTION_AMOUNT_ARS;
-  if (!raw) {
-    return 15000;
-  }
-
-  const amount = Number(raw);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error("Invalid MERCADOPAGO_SUBSCRIPTION_AMOUNT_ARS");
-  }
-
-  return amount;
 }
 
 export async function submitOnboarding(formData: FormData): Promise<void> {
@@ -66,7 +53,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
       rawRestaurantName,
       derivedRestaurantSlug,
     });
-  } catch (e) {
+  } catch {
     /* ignore */
   }
 
@@ -245,7 +232,7 @@ export async function submitOnboarding(formData: FormData): Promise<void> {
       brandId,
       payerEmail: primaryEmail as string,
       reason: `Suscripcion Satix - ${brandName}`,
-      amount: getSubscriptionAmount(),
+      amount: getSubscriptionUnitAmount(),
       currencyId: "ARS",
       brandSlug,
     });

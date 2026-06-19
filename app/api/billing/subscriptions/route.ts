@@ -1,20 +1,13 @@
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { upsertAccountSnapshotByBrandId } from "@/app/lib/server/modules/account/account.service";
-import { createMercadoPagoSubscriptionCheckout } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
+import {
+  createMercadoPagoSubscriptionCheckout,
+  getSubscriptionUnitAmount,
+} from "@/app/lib/server/modules/subscriptions/subscriptions.service";
 
 function readMetadataString(metadata: Record<string, unknown>, key: string): string | null {
   const value = metadata[key];
   return typeof value === "string" && value.length > 0 ? value : null;
-}
-
-function getSubscriptionAmount(): number {
-  const raw = process.env.MERCADOPAGO_SUBSCRIPTION_AMOUNT_ARS;
-  if (!raw) return 15000;
-  const amount = Number(raw);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error("Invalid MERCADOPAGO_SUBSCRIPTION_AMOUNT_ARS");
-  }
-  return amount;
 }
 
 export async function POST() {
@@ -46,7 +39,7 @@ export async function POST() {
       brandId,
       payerEmail: primaryEmail,
       reason: `Suscripcion Satix - ${brandName}`,
-      amount: getSubscriptionAmount(),
+      amount: getSubscriptionUnitAmount(),
       currencyId: "ARS",
       brandSlug,
     });

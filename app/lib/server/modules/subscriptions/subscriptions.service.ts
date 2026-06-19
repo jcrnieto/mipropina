@@ -3,6 +3,8 @@ import {
   mercadoPagoRequest,
   resolveMercadoPagoPayerEmail,
 } from "@/app/lib/server/modules/payments/mercadopago.client";
+import { getAccountByBrandId, patchAccountByBrandId } from "@/app/lib/server/modules/account/account.repository";
+import { listRestaurantsByBrandId } from "@/app/lib/server/modules/restaurants/restaurants.repository";
 
 export type BillingMode = "trial" | "subscription";
 export type BillingStatus = "none" | "trial_active" | "trial_expired" | "subscription_pending" | "subscription_active" | "subscription_paused" | "subscription_cancelled";
@@ -23,7 +25,30 @@ type MercadoPagoPreapprovalResponse = {
   init_point?: string;
   sandbox_init_point?: string;
   external_reference?: string;
+  auto_recurring?: {
+    transaction_amount?: number;
+    currency_id?: string;
+  };
 };
+
+export function getSubscriptionUnitAmount(): number {
+  const raw = process.env.MERCADOPAGO_SUBSCRIPTION_AMOUNT_ARS;
+  if (!raw) {
+    return 15000;
+  }
+
+  const amount = Number(raw);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Invalid MERCADOPAGO_SUBSCRIPTION_AMOUNT_ARS");
+  }
+
+  return amount;
+}
+
+export function calculateSubscriptionAmountForRestaurants(activeRestaurantCount: number): number {
+  const normalizedCount = Math.max(1, activeRestaurantCount);
+  return getSubscriptionUnitAmount() * normalizedCount;
+}
 
 export function computeTrialWindow(days: number): {
   startedAtIso: string;
@@ -123,6 +148,74 @@ export async function createMercadoPagoSubscriptionCheckout(input: {
     preapprovalId: response.id,
     checkoutUrl,
     status: response.status,
+  };
+}
+
+export async function updateMercadoPagoSubscriptionAmount(input: {
+  preapprovalId: string;
+  amount: number;
+  currencyId?: string;
+}): Promise<{
+  id: string;
+  status: string;
+  transactionAmount: number | null;
+}> {
+  const response = await mercadoPagoRequest<MercadoPagoPreapprovalResponse>(
+    `/preapproval/${encodeURIComponent(input.preapprovalId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        auto_recurring: {
+          transaction_amount: input.amount,
+          currency_id: input.currencyId ?? "ARS",
+        },
+      }),
+    },
+  );
+
+  return {
+    id: response.id,
+    status: response.status,
+    transactionAmount: response.auto_recurring?.transaction_amount ?? null,
+  };
+}
+
+export async function syncSubscriptionAmountForBrand(brandId: string): Promise<{
+  synced: boolean;
+  reason?: string;
+  activeRestaurantCount?: number;
+  amount?: number;
+}> {
+  const account = await getAccountByBrandId(brandId);
+  if (!account) {
+    return { synced: false, reason: "missing-account" };
+  }
+
+  if (account.status !== "active") {
+    return { synced: false, reason: "subscription-not-active" };
+  }
+
+  if (!account.mp_preapproval_id) {
+    return { synced: false, reason: "missing-preapproval-id" };
+  }
+
+  const restaurants = await listRestaurantsByBrandId(brandId);
+  const activeRestaurantCount = restaurants.filter((restaurant) => restaurant.is_active).length;
+  const amount = calculateSubscriptionAmountForRestaurants(activeRestaurantCount);
+  const updatedPreapproval = await updateMercadoPagoSubscriptionAmount({
+    preapprovalId: account.mp_preapproval_id,
+    amount,
+    currencyId: "ARS",
+  });
+
+  await patchAccountByBrandId(brandId, {
+    mp_preapproval_status: updatedPreapproval.status,
+  });
+
+  return {
+    synced: true,
+    activeRestaurantCount,
+    amount,
   };
 }
 

@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { slugifyBrand } from "@/app/lib/brand";
 import { archiveRestaurantByClerkId } from "@/app/lib/server/modules/restaurants/restaurants.service";
 import {
   createRestaurantByClerkId,
@@ -79,12 +80,12 @@ export async function DELETE(req: Request) {
       return Response.json({ ok: false, error: "restaurantId es obligatorio." }, { status: 400 });
     }
 
-    await archiveRestaurantByClerkId({
+    const billingSync = await archiveRestaurantByClerkId({
       clerkUserId: userId,
       restaurantId,
     });
 
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, ...billingSync });
   } catch (error) {
     return Response.json(
       { ok: false, error: error instanceof Error ? error.message : "No se pudo eliminar el local." },
@@ -104,16 +105,16 @@ export async function POST(req: Request) {
     const brandName = readOptionalString(body.brandName);
     const branchName = readOptionalString(body.branchName);
     const rawSlug = readOptionalString(body.slug);
-    const slug = rawSlug ? normalizeSlug(rawSlug) : "";
+    const slug = rawSlug ? normalizeSlug(rawSlug) : slugifyBrand(branchName ?? "");
 
-    if (!brandName || !slug) {
+    if (!brandName || !branchName || !slug) {
       return Response.json(
-        { ok: false, error: "Marca y slug son obligatorios para crear el local." },
+        { ok: false, error: "Marca y sucursal son obligatorias para crear el local." },
         { status: 400 },
       );
     }
 
-    await createRestaurantByClerkId({
+    const billingSync = await createRestaurantByClerkId({
       clerkUserId: userId,
       brandName,
       branchName,
@@ -125,7 +126,7 @@ export async function POST(req: Request) {
       tiktok: readOptionalString(body.tiktok),
     });
 
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, ...billingSync });
   } catch (error) {
     return Response.json(
       { ok: false, error: error instanceof Error ? error.message : "No se pudo crear el local." },

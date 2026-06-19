@@ -11,6 +11,32 @@ import {
 } from "@/app/lib/server/modules/restaurants/restaurants.repository";
 import { getBrandByClerkId } from "@/app/lib/server/modules/brands/brands.service";
 import { getUsersMipropinaIdByClerkId } from "@/app/lib/server/modules/users/users.repository";
+import { syncSubscriptionAmountForBrand } from "@/app/lib/server/modules/subscriptions/subscriptions.service";
+
+export type RestaurantBillingSyncResult = {
+  billingSynced: boolean;
+  billingSyncWarning?: string;
+};
+
+async function syncRestaurantBillingAmount(brandId: string): Promise<RestaurantBillingSyncResult> {
+  try {
+    const result = await syncSubscriptionAmountForBrand(brandId);
+    return {
+      billingSynced: result.synced,
+    };
+  } catch (error) {
+    console.error("[restaurants] failed to sync subscription amount", {
+      brandId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      billingSynced: false,
+      billingSyncWarning:
+        "El local se guardo, pero no pudimos actualizar el monto de la suscripcion. Reintenta o revisa Mercado Pago.",
+    };
+  }
+}
 
 export type SetRestaurantImageInput = {
   clerkUserId: string;
@@ -31,7 +57,7 @@ export async function listRestaurantsByClerkId(clerkUserId: string) {
 export async function archiveRestaurantByClerkId(input: {
   clerkUserId: string;
   restaurantId: string;
-}): Promise<void> {
+}): Promise<RestaurantBillingSyncResult> {
   const restaurant = await getRestaurantById(input.restaurantId);
   if (!restaurant || restaurant.auth_user_id !== input.clerkUserId) {
     throw new Error("No se encontro el local.");
@@ -47,6 +73,12 @@ export async function archiveRestaurantByClerkId(input: {
   await patchRestaurantById(input.restaurantId, {
     is_active: false,
   });
+
+  if (restaurant.brand_id) {
+    return syncRestaurantBillingAmount(restaurant.brand_id);
+  }
+
+  return { billingSynced: false };
 }
 
 export async function getOwnerByBrandSlug(brandSlug: string): Promise<{
@@ -359,7 +391,7 @@ export async function createRestaurantByClerkId(input: {
   instagram?: string | null;
   facebook?: string | null;
   tiktok?: string | null;
-}): Promise<void> {
+}): Promise<RestaurantBillingSyncResult> {
   const usersMipropinaId = await getUsersMipropinaIdByClerkId(input.clerkUserId);
   if (!usersMipropinaId) {
     throw new Error("Cannot create restaurant without users_mipropina row");
@@ -395,6 +427,8 @@ export async function createRestaurantByClerkId(input: {
     image: null,
     is_active: true,
   });
+
+  return syncRestaurantBillingAmount(brand.id);
 }
 
 export async function upsertOnboardingRestaurantByClerkId(input: {
