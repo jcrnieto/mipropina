@@ -44,6 +44,7 @@ type StatsAccumulator = {
   positives: number;
   neutrals: number;
   negatives: number;
+  classifiedScores: number;
   withComment: number;
   sumScore: number;
   scored: number;
@@ -117,6 +118,18 @@ function classifyExperience(row: RatingSubmissionRow): "positive" | "neutral" | 
   return "negative";
 }
 
+function classifyScore(score: number): "positive" | "neutral" | "negative" {
+  if (score >= 4) {
+    return "positive";
+  }
+
+  if (score >= 3) {
+    return "neutral";
+  }
+
+  return "negative";
+}
+
 function getLowestScore(row: RatingSubmissionRow): number | null {
   const scores = getExperienceScores(row);
   if (scores.length === 0) {
@@ -158,6 +171,7 @@ function buildSummary(rows: RatingSubmissionRow[]) {
     positives: 0,
     neutrals: 0,
     negatives: 0,
+    classifiedScores: 0,
     withComment: 0,
     sumScore: 0,
     scored: 0,
@@ -165,18 +179,22 @@ function buildSummary(rows: RatingSubmissionRow[]) {
 
   for (const row of rows) {
     const score = getOverallScore(row);
-    const classification = classifyExperience(row);
     if (score !== null) {
       accumulator.scored += 1;
       accumulator.sumScore += score;
     }
 
-    if (classification === "positive") {
-      accumulator.positives += 1;
-    } else if (classification === "negative") {
-      accumulator.negatives += 1;
-    } else if (classification === "neutral") {
-      accumulator.neutrals += 1;
+    for (const individualScore of getExperienceScores(row)) {
+      const classification = classifyScore(individualScore);
+      accumulator.classifiedScores += 1;
+
+      if (classification === "positive") {
+        accumulator.positives += 1;
+      } else if (classification === "negative") {
+        accumulator.negatives += 1;
+      } else {
+        accumulator.neutrals += 1;
+      }
     }
 
     if (row.comment && row.comment.trim().length > 0) {
@@ -184,7 +202,7 @@ function buildSummary(rows: RatingSubmissionRow[]) {
     }
   }
 
-  const divisor = rows.length > 0 ? rows.length : 1;
+  const divisor = accumulator.classifiedScores > 0 ? accumulator.classifiedScores : 1;
   const scoreDivisor = accumulator.scored > 0 ? accumulator.scored : 1;
   const totalDivisor = rows.length > 0 ? rows.length : 1;
   return {
@@ -229,11 +247,12 @@ function buildDistribution(rows: RatingSubmissionRow[]) {
   ]);
 
   for (const row of rows) {
-    const classification = classifyExperience(row);
-    if (!classification) continue;
-    const current = buckets.get(classification);
-    if (!current) continue;
-    current.total += 1;
+    for (const score of getExperienceScores(row)) {
+      const classification = classifyScore(score);
+      const current = buckets.get(classification);
+      if (!current) continue;
+      current.total += 1;
+    }
   }
 
   return [...buckets.entries()].map(([status, data]) => ({

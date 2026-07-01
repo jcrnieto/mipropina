@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Satix",
     short_name: "Satix",
     description:
-      "Panel para dueños de restaurantes con control de reseñas internas, propinas y métricas.",
+      "Detectá malas experiencias en tu restaurante en tiempo real y actuá antes de que afecten tu reputación.",
     start_url: "/admin",
     scope: "/",
     display: "standalone",

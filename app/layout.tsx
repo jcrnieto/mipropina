@@ -15,14 +15,39 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://www.satixapp.com"),
   title: {
-    default: "Satix | Propinas digitales para restaurantes",
+    default: "Satix | Detectá clientes insatisfechos antes de que dejen una mala reseña",
     template: "%s | Satix",
   },
   description:
-    "Recibi propinas digitales con QR y Mercado Pago para tus mozos, sin efectivo y sin friccion.",
+    "Detectá malas experiencias en tu restaurante en tiempo real y actuá antes de que afecten tu reputación.",
   applicationName: "Satix",
   manifest: "/manifest.webmanifest",
+  openGraph: {
+    title: "Satix | Detectá clientes insatisfechos antes de que dejen una mala reseña",
+    description:
+      "Detectá malas experiencias en tu restaurante en tiempo real y actuá antes de que afecten tu reputación.",
+    url: "/",
+    siteName: "Satix",
+    images: [
+      {
+        url: "/isologo-satix.png",
+        width: 512,
+        height: 512,
+        alt: "Satix",
+      },
+    ],
+    locale: "es_AR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Satix | Detectá clientes insatisfechos antes de que dejen una mala reseña",
+    description:
+      "Detectá malas experiencias en tu restaurante en tiempo real y actuá antes de que afecten tu reputación.",
+    images: ["/isologo-satix.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
