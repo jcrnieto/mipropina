@@ -2,9 +2,9 @@ import Link from "next/link";
 
 export function PublicStoreFooter() {
   return (
-    <footer className="mx-auto w-full max-w-sm rounded-2xl border border-white/65 bg-white/75 px-4 py-3 text-center shadow-[0_14px_30px_rgba(17,24,39,0.1)] backdrop-blur md:max-w-5xl md:px-6 md:py-4">
-      <p className="text-sm text-[#415170] md:text-base">
-        Vos tambien queres tu app de propinas?
+    <footer className="mx-auto w-full px-2 pb-1 pt-2 text-center">
+      <p className="text-xs font-medium text-[#6f7d99] sm:text-sm">
+        Queres una experiencia digital para tu local?
         <Link href="/" className="ml-1 font-semibold text-[#2f66dc] transition-colors hover:text-[#244fb1]">
           satix.app
         </Link>

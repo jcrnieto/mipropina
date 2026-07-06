@@ -1,7 +1,6 @@
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { WaitersCards } from "@/app/components/publicStore/WaitersCards";
 import { PublicStoreFooter } from "@/app/components/publicStore/PublicStoreFooter";
+import { PublicStoreHeader } from "@/app/components/publicStore/PublicStoreHeader";
 
 type PublicStoreTipPageProps = {
   params: Promise<{ brandSlug: string }>;
@@ -15,15 +14,9 @@ export default async function PublicStoreTipPage({ params, searchParams }: Publi
   const backUrl = waiterId ? `/${brandSlug}?waiter=${encodeURIComponent(waiterId)}` : `/${brandSlug}`;
 
   return (
-    <main className="min-h-screen gradient-hero px-4 py-6 md:py-10">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 md:gap-5">
-        <Link
-          href={backUrl}
-          className="inline-flex w-fit items-center gap-1 rounded-xl border border-[#d8e0ef] bg-white/70 px-3 py-2 text-sm font-medium text-[#244e9b] transition hover:bg-white"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Volver
-        </Link>
+    <main className="min-h-screen gradient-hero px-4 py-5 md:py-8">
+      <div className="mx-auto flex w-full max-w-[430px] flex-col gap-3 md:max-w-[520px]">
+        <PublicStoreHeader backUrl={backUrl} />
         <WaitersCards storePathPrefix={brandSlug} brandSlug={brandSlug} mode="tip" />
         <PublicStoreFooter />
       </div>

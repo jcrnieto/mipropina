@@ -75,71 +75,76 @@ export default async function PublicStorePage({ params, searchParams }: PublicSt
   ].filter((item): item is SocialLinkItem => Boolean(item.href));
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#1d3658_0%,#0f1c33_40%,#081426_100%)] px-4 py-6 md:py-10">
-      <div className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-[#2fa8dc]/25 blur-3xl" />
-      <div className="relative mx-auto flex w-full max-w-sm flex-col gap-4 rounded-[34px] border border-white/25 bg-[#0a1628]/55 p-5 shadow-[0_20px_65px_rgba(5,11,24,0.65)] backdrop-blur-md md:max-w-md">
-        <div className="mt-5 flex flex-col items-center">
-          <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-white/25 bg-white/10">
+    <main className="min-h-screen gradient-hero px-4 py-6 md:py-10">
+      <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[430px] flex-col gap-4 rounded-[30px] border border-white/80 bg-white/72 p-5 shadow-[0_22px_60px_rgba(32,54,88,0.16)] backdrop-blur md:min-h-[calc(100vh-5rem)] md:max-w-[520px]">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold text-[#64708a]">satix.app</span>
+          <span className="rounded-full bg-[#eaf0ff] px-3 py-1 text-xs font-semibold text-[#315eea]">QR del local</span>
+        </div>
+
+        <div className="mt-3 flex flex-col items-center">
+          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl border border-[#dfe6f2] bg-white shadow-[0_14px_35px_rgba(43,68,110,0.1)]">
             {logo ? (
               <Image
                 src={logo}
                 alt={`Logo de ${brandName}`}
-                width={96}
-                height={96}
+                width={112}
+                height={112}
                 className="h-full w-full object-cover"
                 unoptimized
               />
             ) : (
-              <span className="text-3xl font-semibold text-white">{brandName.charAt(0).toUpperCase() || "R"}</span>
+              <span className="text-4xl font-bold text-[#2b3c64]">{brandName.charAt(0).toUpperCase() || "R"}</span>
             )}
           </div>
-          <p className="mt-4 text-center text-2xl font-semibold tracking-wide text-white">{brandName}</p>
+          <p className="mt-5 text-center text-3xl font-bold text-[#071b4a]">{brandName}</p>
+          <p className="mt-2 text-center text-sm font-medium text-[#68748c]">Elegí cómo querés continuar</p>
         </div>
 
         <div className="mt-2 space-y-3">
           <Link
             href={`/${brandSlug}/propina${waiterQuery}`}
-            className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#f0dfcb] bg-[#f0dfcb] px-4 text-base font-semibold text-[#17243b] transition hover:brightness-95"
+            className="gradient-primary flex h-14 items-center justify-center gap-2 rounded-2xl px-4 text-base font-bold text-primary-foreground shadow-xl shadow-primary/25 transition hover:brightness-105"
           >
-            <Wallet className="h-4 w-4" />
+            <Wallet className="h-5 w-5" />
             Propina
           </Link>
 
           <Link
             href={`/${brandSlug}/resena${waiterQuery}`}
-            className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#f0dfcb] bg-[#f0dfcb] px-4 text-base font-semibold text-[#17243b] transition hover:brightness-95"
+            className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-[#dfe6f2] bg-white px-4 text-base font-bold text-[#14203d] shadow-[0_12px_28px_rgba(43,68,110,0.08)] transition hover:border-[#b8c7f8] hover:text-[#315eea]"
           >
-            <Star className="h-4 w-4" />
+            <Star className="h-5 w-5" />
             Reseña
           </Link>
 
           <div className="my-4 flex items-center gap-3 px-2">
-            <div className="h-px flex-1 bg-white/30" />
-            <span className="text-xs uppercase tracking-[0.18em] text-white/70">secciones</span>
-            <div className="h-px flex-1 bg-white/30" />
+            <div className="h-px flex-1 bg-[#d7deeb]" />
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#68748c]">secciones</span>
+            <div className="h-px flex-1 bg-[#d7deeb]" />
           </div>
 
           {menu?.fileUrl ? (
             <a
               href={menu.fileUrl}
-              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/45 bg-transparent px-4 text-base font-semibold text-white transition hover:bg-white/10"
+              className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-[#dfe6f2] bg-white/70 px-4 text-base font-bold text-[#14203d] transition hover:bg-white"
             >
-              <BookOpenText className="h-4 w-4" />
+              <BookOpenText className="h-5 w-5 text-[#315eea]" />
               Menu
             </a>
           ) : (
             <Link
               href={`/${brandSlug}/menu`}
-              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/45 bg-transparent px-4 text-base font-semibold text-white transition hover:bg-white/10"
+              className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-[#dfe6f2] bg-white/70 px-4 text-base font-bold text-[#14203d] transition hover:bg-white"
             >
-              <BookOpenText className="h-4 w-4" />
+              <BookOpenText className="h-5 w-5 text-[#315eea]" />
               Menu
             </Link>
           )}
 
           {socialLinks.length > 0 ? (
-            <div className="space-y-2 rounded-xl border border-white/20 bg-white/5 p-3">
-              <p className="text-xs uppercase tracking-[0.14em] text-white/70">Redes sociales</p>
+            <div className="space-y-2 rounded-2xl border border-[#dfe6f2] bg-white/70 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#68748c]">Redes sociales</p>
               <div className="grid gap-2">
                 {socialLinks.map((social) => {
                   const Icon = social.icon;
@@ -149,7 +154,7 @@ export default async function PublicStorePage({ params, searchParams }: PublicSt
                       href={social.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/35 bg-transparent px-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                      className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[#dfe6f2] bg-white px-3 text-sm font-semibold text-[#14203d] transition hover:border-[#b8c7f8] hover:text-[#315eea]"
                     >
                       <Icon className="h-4 w-4" />
                       {social.label}
@@ -161,9 +166,10 @@ export default async function PublicStorePage({ params, searchParams }: PublicSt
           ) : null}
         </div>
 
-        <PublicStoreFooter />
+        <div className="mt-auto">
+          <PublicStoreFooter />
+        </div>
       </div>
     </main>
   );
 }
-
